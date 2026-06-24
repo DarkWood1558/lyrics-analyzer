@@ -7,6 +7,10 @@ spring:
     username: lyrics_app
     password: lyrics_app_password
     driver-class-name: org.postgresql.Driver
+  web:
+    cors:
+      allowed-origins: "http://localhost:8000,file://"
+      allowed-methods: "GET,POST,PUT,DELETE"
 
   jpa:
     hibernate:
@@ -32,7 +36,7 @@ lyrics-analyzer:
     base-url: https://api.lyrics.ovh
   ingestion:
     # Pause zwischen einzelnen Lyrics-Abrufen, um die kostenlose API nicht zu überlasten
-    request-delay-ms: 300
+    request-delay-ms: 2000
 
 logging:
   level:

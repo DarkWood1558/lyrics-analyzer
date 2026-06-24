@@ -13,7 +13,8 @@ import java.util.Optional;
 
 public interface TrackRepository extends JpaRepository<Track, Long> {
 
-    Optional<Track> findByArtistNameIgnoreCaseAndTitleIgnoreCase(String artistName, String title);
+    @Query(value = "SELECT t.* FROM track t WHERE LOWER(t.artist_name) = LOWER(CAST(:artistName AS TEXT)) AND LOWER(t.title) = LOWER(CAST(:title AS TEXT)) LIMIT 1", nativeQuery = true)
+    Optional<Track> findByArtistNameIgnoreCaseAndTitleIgnoreCase(@Param("artistName") String artistName, @Param("title") String title);
 
     Optional<Track> findByDeezerId(Long deezerId);
 
@@ -29,14 +30,14 @@ public interface TrackRepository extends JpaRepository<Track, Long> {
      * dadurch deckt eine einzige Query alle Kombinationen ab (kein Filter / nur Status /
      * nur Suche / beides), ohne mehrere Repository-Methoden pflegen zu müssen.
      */
-    @Query("""
-           SELECT t FROM Track t
-           WHERE (:status IS NULL OR t.lyricsStatus = :status)
-           AND (:search IS NULL OR
-                LOWER(t.artistName) LIKE LOWER(CONCAT('%', :search, '%')) OR
-                LOWER(t.title) LIKE LOWER(CONCAT('%', :search, '%')))
+    @Query(value = """
+           SELECT t.* FROM track t
+           WHERE (COALESCE(:status, '') = '' OR t.lyrics_status = CAST(:status AS VARCHAR(20)))
+           AND (COALESCE(:search, '') = '' OR
+                LOWER(t.artist_name) LIKE LOWER('%' || CAST(:search AS TEXT) || '%') ESCAPE '' OR
+                LOWER(t.title) LIKE LOWER('%' || CAST(:search AS TEXT) || '%') ESCAPE '')
            ORDER BY t.id DESC
-           """)
+           """, nativeQuery = true)
     Page<Track> search(@Param("status") LyricsStatus status,
                        @Param("search") String search,
                        Pageable pageable);

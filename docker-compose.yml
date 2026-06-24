@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: lyrics-analyzer-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: lyrics_analyzer
+      POSTGRES_USER: lyrics_app
+      POSTGRES_PASSWORD: lyrics_app_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - lyrics_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lyrics_app -d lyrics_analyzer"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  lyrics_pgdata:

@@ -1,0 +1,40 @@
+spring:
+  application:
+    name: lyrics-analyzer
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/lyrics_analyzer
+    username: lyrics_app
+    password: lyrics_app_password
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate   # Schema kommt ausschließlich von Flyway, nicht von Hibernate
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+server:
+  port: 8080
+
+# Eigene Konfiguration für externe Music-/Lyrics-APIs
+lyrics-analyzer:
+  deezer:
+    base-url: https://api.deezer.com
+  lyrics-ovh:
+    base-url: https://api.lyrics.ovh
+  ingestion:
+    # Pause zwischen einzelnen Lyrics-Abrufen, um die kostenlose API nicht zu überlasten
+    request-delay-ms: 300
+
+logging:
+  level:
+    com.lyricsanalyzer: INFO
+    edu.stanford.nlp: WARN

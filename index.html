@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lyrics Analyzer</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div class="app">
+
+    <header class="app-header">
+        <h1>🎵 Lyrics Analyzer</h1>
+        <p class="subtitle">Music-API + Lyrics-Caching + Sentiment-Analyse</p>
+    </header>
+
+    <nav class="tabs" id="tabs">
+        <button class="tab-button active" data-tab="dashboard">Dashboard</button>
+        <button class="tab-button" data-tab="ingestion">Songs laden</button>
+        <button class="tab-button" data-tab="tracks">Tracks</button>
+        <button class="tab-button" data-tab="stats">Statistiken</button>
+    </nav>
+
+    <main>
+
+        <!-- DASHBOARD -->
+        <section class="tab-panel active" id="panel-dashboard">
+            <h2>Übersicht</h2>
+            <div class="status-cards" id="status-cards">
+                <div class="status-card" data-status="FOUND">
+                    <div class="status-card-count" id="count-FOUND">–</div>
+                    <div class="status-card-label">Lyrics gefunden</div>
+                </div>
+                <div class="status-card" data-status="NOT_FOUND">
+                    <div class="status-card-count" id="count-NOT_FOUND">–</div>
+                    <div class="status-card-label">Keine Lyrics</div>
+                </div>
+                <div class="status-card status-card-error" data-status="ERROR">
+                    <div class="status-card-count" id="count-ERROR">–</div>
+                    <div class="status-card-label">Fehler</div>
+                </div>
+                <div class="status-card" data-status="PENDING">
+                    <div class="status-card-count" id="count-PENDING">–</div>
+                    <div class="status-card-label">Ausstehend</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>Sentiment-Analyse</h3>
+                <p class="muted">
+                    Analysiert alle Songs, die Lyrics aber noch kein Sentiment-Ergebnis haben,
+                    mit dem vortrainierten Stanford-CoreNLP-Modell. Das Ergebnis wird dauerhaft gespeichert.
+                </p>
+                <div class="form-row">
+                    <label for="sentiment-limit">Limit</label>
+                    <input type="number" id="sentiment-limit" value="50" min="1" max="500">
+                    <button class="btn btn-primary" id="btn-run-sentiment">Analyse starten</button>
+                </div>
+                <div id="sentiment-result" class="result-box hidden"></div>
+            </div>
+
+            <div class="card">
+                <h3>Fehlerhafte Tracks erneut versuchen</h3>
+                <p class="muted">
+                    Tracks mit Status <code>ERROR</code> sind meist durch ein vorübergehendes technisches
+                    Problem entstanden (Netzwerk/Timeout). Ein erneuter Versuch kann helfen.
+                </p>
+                <div class="form-row">
+                    <label for="retry-limit">Limit</label>
+                    <input type="number" id="retry-limit" value="20" min="1" max="200">
+                    <button class="btn btn-secondary" id="btn-retry-errors">Fehler erneut versuchen</button>
+                </div>
+                <div id="retry-result" class="result-box hidden"></div>
+            </div>
+        </section>
+
+        <!-- INGESTION -->
+        <section class="tab-panel" id="panel-ingestion">
+            <h2>Songs suchen &amp; Lyrics laden</h2>
+            <div class="card">
+                <p class="muted">
+                    Suchbegriff im Deezer-Format, z.B. <code>artist:"Coldplay"</code> für einen bestimmten
+                    Künstler oder einfach ein freier Suchbegriff wie <code>Coldplay</code>.
+                    Bereits geladene Songs werden automatisch erkannt und nicht erneut bei lyrics.ovh abgefragt.
+                </p>
+                <form id="ingestion-form" class="form-grid">
+                    <label for="search-query">Suchbegriff</label>
+                    <input type="text" id="search-query" placeholder='artist:"Coldplay"' required>
+
+                    <label for="ingestion-limit">Max. Songs</label>
+                    <input type="number" id="ingestion-limit" value="20" min="1" max="100">
+
+                    <button type="submit" class="btn btn-primary">Songs laden</button>
+                </form>
+                <div id="ingestion-loading" class="loading hidden">
+                    <div class="spinner"></div>
+                    <span>Lade Songs und Lyrics … das kann je nach Anzahl etwas dauern.</span>
+                </div>
+                <div id="ingestion-result" class="result-box hidden"></div>
+            </div>
+
+            <div class="card history-card">
+                <h3>Letzte Suchanfragen</h3>
+                <ul id="ingestion-history" class="history-list">
+                    <li class="muted">Noch keine Suche durchgeführt.</li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- TRACKS -->
+        <section class="tab-panel" id="panel-tracks">
+            <h2>Tracks</h2>
+            <div class="card">
+                <div class="filter-row">
+                    <input type="text" id="track-search" placeholder="Suche nach Künstler oder Titel …">
+                    <select id="track-status-filter">
+                        <option value="">Alle Status</option>
+                        <option value="FOUND">FOUND</option>
+                        <option value="NOT_FOUND">NOT_FOUND</option>
+                        <option value="ERROR">ERROR</option>
+                        <option value="PENDING">PENDING</option>
+                    </select>
+                    <button class="btn btn-secondary" id="btn-apply-filter">Filtern</button>
+                </div>
+
+                <div class="table-wrapper">
+                    <table id="tracks-table">
+                        <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Künstler</th>
+                            <th>Titel</th>
+                            <th>Album</th>
+                            <th>Lyrics-Status</th>
+                            <th>Sentiment</th>
+                            <th>Score</th>
+                            <th></th>
+                        </tr>
+                        </thead>
+                        <tbody id="tracks-tbody">
+                        <tr><td colspan="8" class="muted">Lade Tracks …</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="pagination" id="pagination">
+                    <button class="btn btn-secondary" id="btn-prev-page" disabled>← Zurück</button>
+                    <span id="pagination-info">Seite 1</span>
+                    <button class="btn btn-secondary" id="btn-next-page" disabled>Weiter →</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- STATS -->
+        <section class="tab-panel" id="panel-stats">
+            <h2>Statistiken</h2>
+
+            <div class="card">
+                <h3>Durchschnittliches Sentiment pro Genre</h3>
+                <p class="muted">
+                    Hinweis: Genre wird aktuell von Deezer nicht in der einfachen Suche mitgeliefert -
+                    diese Auswertung ist erst aussagekräftig, sobald Genre-Daten ergänzt werden (siehe README).
+                </p>
+                <div id="stats-genre" class="stats-list">
+                    <p class="muted">Lade Statistik …</p>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>Durchschnittliches Sentiment pro Erscheinungsjahr</h3>
+                <p class="muted">
+                    Hinweis: Erscheinungsjahr wird aktuell von Deezer nicht in der einfachen Suche
+                    mitgeliefert - siehe README für eine mögliche Erweiterung.
+                </p>
+                <div id="stats-year" class="stats-list">
+                    <p class="muted">Lade Statistik …</p>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Track-Detail Modal -->
+    <div class="modal-overlay hidden" id="track-modal-overlay">
+        <div class="modal">
+            <button class="modal-close" id="modal-close-btn">&times;</button>
+            <div id="modal-content">Lade …</div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast hidden"></div>
+
+</div>
+
+<script src="/js/api.js"></script>
+<script src="/js/app.js"></script>
+</body>
+</html>

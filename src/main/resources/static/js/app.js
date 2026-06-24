@@ -1,6 +1,7 @@
 /**
  * Lyrics Analyzer - Frontend Application
  * Haupt-UI-Logik - funktioniert ohne ES6-Module
+ * Enthält alle Funktionen für Dashboard, Tracks, Stats, Themen, Stil-Analyse und Lyrics DNA
  */
 
 (function() {
@@ -33,11 +34,13 @@
         tabPanels: document.querySelectorAll('.tab-panel'),
         tabButtons: document.querySelectorAll('.tab-button'),
         
+        // Dashboard
         countFOUND: document.getElementById('count-FOUND'),
         countNOT_FOUND: document.getElementById('count-NOT_FOUND'),
         countERROR: document.getElementById('count-ERROR'),
         countPENDING: document.getElementById('count-PENDING'),
         
+        // Ingestion
         ingestionForm: document.getElementById('ingestion-form'),
         searchQuery: document.getElementById('search-query'),
         ingestionLimit: document.getElementById('ingestion-limit'),
@@ -45,18 +48,21 @@
         ingestionResult: document.getElementById('ingestion-result'),
         ingestionHistory: document.getElementById('ingestion-history'),
         
+        // Sentiment
         sentimentLimit: document.getElementById('sentiment-limit'),
         btnRunSentiment: document.getElementById('btn-run-sentiment'),
         sentimentResult: document.getElementById('sentiment-result'),
         
+        // Retry Errors
         retryLimit: document.getElementById('retry-limit'),
         btnRetryErrors: document.getElementById('btn-retry-errors'),
         retryResult: document.getElementById('retry-result'),
-
-        backfillLimit: document.getElementById('backfill-limit'),
+        
+        // Backfill Metadata
         btnBackfillMetadata: document.getElementById('btn-backfill-metadata'),
         backfillResult: document.getElementById('backfill-result'),
         
+        // Tracks
         trackSearch: document.getElementById('track-search'),
         trackStatusFilter: document.getElementById('track-status-filter'),
         btnApplyFilter: document.getElementById('btn-apply-filter'),
@@ -66,14 +72,44 @@
         btnPrevPage: document.getElementById('btn-prev-page'),
         btnNextPage: document.getElementById('btn-next-page'),
         
+        // Stats
         statsGenre: document.getElementById('stats-genre'),
         statsYear: document.getElementById('stats-year'),
         
+        // Modal
         modalOverlay: document.getElementById('track-modal-overlay'),
         modalContent: document.getElementById('modal-content'),
         modalCloseBtn: document.getElementById('modal-close-btn'),
         
+        // Toast
         toast: document.getElementById('toast'),
+        
+        // Theme Classification
+        themeArtist: document.getElementById('theme-artist'),
+        themeTitle: document.getElementById('theme-title'),
+        btnClassifyTheme: document.getElementById('btn-classify-theme'),
+        themeResult: document.getElementById('theme-result'),
+        btnTrainTheme: document.getElementById('btn-train-theme'),
+        btnClassifyAll: document.getElementById('btn-classify-all'),
+        themeTrainResult: document.getElementById('theme-train-result'),
+        
+        // Style Analysis
+        artist1: document.getElementById('artist1'),
+        artist2: document.getElementById('artist2'),
+        btnCompareArtists: document.getElementById('btn-compare-artists'),
+        styleCompareResult: document.getElementById('style-compare-result'),
+        similarArtist: document.getElementById('similar-artist'),
+        similarLimit: document.getElementById('similar-limit'),
+        btnFindSimilar: document.getElementById('btn-find-similar'),
+        similarResult: document.getElementById('similar-result'),
+        
+        // DNA
+        btnLoadDNA: document.getElementById('btn-load-dna'),
+        dnaVisualization: document.getElementById('dna-visualization'),
+        dnaResult: document.getElementById('dna-result'),
+        dnaArtist: document.getElementById('dna-artist'),
+        btnGetDNA: document.getElementById('btn-get-dna'),
+        dnaDetailsResult: document.getElementById('dna-details-result'),
     };
 
     // API Reference
@@ -157,7 +193,9 @@
     // ==================== INGESTION ====================
 
     function initIngestion() {
-        elements.ingestionForm.addEventListener('submit', handleIngestionSubmit);
+        if (elements.ingestionForm) {
+            elements.ingestionForm.addEventListener('submit', handleIngestionSubmit);
+        }
     }
 
     async function handleIngestionSubmit(e) {
@@ -196,6 +234,7 @@
     }
 
     function updateHistory() {
+        if (!elements.ingestionHistory) return;
         if (state.ingestionHistory.length === 0) {
             elements.ingestionHistory.innerHTML = '<li class="muted">Noch keine Suche durchgeführt.</li>';
             return;
@@ -213,7 +252,9 @@
     // ==================== SENTIMENT ====================
 
     function initSentiment() {
-        elements.btnRunSentiment.addEventListener('click', handleRunSentiment);
+        if (elements.btnRunSentiment) {
+            elements.btnRunSentiment.addEventListener('click', handleRunSentiment);
+        }
     }
 
     async function handleRunSentiment() {
@@ -221,8 +262,8 @@
         showLoading(elements.sentimentResult, true);
         try {
             const result = await api.analyzePendingSentiment(limit);
-            showResult(elements.sentimentResult, `Analyse für ${result.analyzedCount ?? limit} Tracks abgeschlossen`, false);
-            showToast('Sentiment-Analyse abgeschlossen');
+            showResult(elements.sentimentResult, `Analyse für ${result.analyzed || limit} Tracks gestartet`, false);
+            showToast('Sentiment-Analyse läuft im Hintergrund');
             loadDashboard();
             loadTracks();
             loadStats();
@@ -236,7 +277,9 @@
     // ==================== RETRY ERRORS ====================
 
     function initRetryErrors() {
-        elements.btnRetryErrors.addEventListener('click', handleRetryErrors);
+        if (elements.btnRetryErrors) {
+            elements.btnRetryErrors.addEventListener('click', handleRetryErrors);
+        }
     }
 
     async function handleRetryErrors() {
@@ -244,9 +287,8 @@
         showLoading(elements.retryResult, true);
         try {
             const result = await api.retryErrorTracks(limit);
-            const msg = `Versucht: ${result.attempted}, Neu gefunden: ${result.newlyFetched}, Weiterhin nicht gefunden: ${result.notFound}, Weiterhin Fehler: ${result.stillError}`;
-            showResult(elements.retryResult, msg, false);
-            showToast('Erneuter Ladeversuch abgeschlossen');
+            showResult(elements.retryResult, `Erneuter Versuch für ${result.retryCount || limit} Tracks gestartet`, false);
+            showToast('Erneuter Ladeversuch läuft');
             loadDashboard();
             loadTracks();
         } catch (error) {
@@ -256,23 +298,21 @@
         }
     }
 
-    // ==================== METADATA BACKFILL (Genre/Jahr) ====================
+    // ==================== BACKFILL METADATA ====================
 
     function initBackfillMetadata() {
-        if (!elements.btnBackfillMetadata) return;
-        elements.btnBackfillMetadata.addEventListener('click', handleBackfillMetadata);
+        if (elements.btnBackfillMetadata) {
+            elements.btnBackfillMetadata.addEventListener('click', handleBackfillMetadata);
+        }
     }
 
     async function handleBackfillMetadata() {
-        const limit = parseInt(elements.backfillLimit.value) || 50;
+        const limit = parseInt(document.getElementById('metadata-limit')?.value || 50);
         showLoading(elements.backfillResult, true);
         try {
             const result = await api.backfillMetadata(limit);
-            const msg = `Geprüft: ${result.attempted}, Aktualisiert: ${result.updated}, Übersprungen: ${result.skipped}`;
-            showResult(elements.backfillResult, msg, false);
-            showToast('Genre-/Jahr-Nachladen abgeschlossen');
-            loadTracks();
-            loadStats();
+            showResult(elements.backfillResult, `Metadaten für ${limit} Tracks nachgeladen`, false);
+            showToast('Metadaten-Backfill läuft');
         } catch (error) {
             showResult(elements.backfillResult, `Fehler: ${error.message}`, true);
         } finally {
@@ -283,33 +323,41 @@
     // ==================== TRACKS ====================
 
     function initTracks() {
-        elements.btnApplyFilter.addEventListener('click', () => {
-            state.tracks.page = 0;
-            loadTracks();
-        });
-        elements.trackSearch.addEventListener('keyup', (e) => {
-            if (e.key === 'Enter') {
+        if (elements.btnApplyFilter) {
+            elements.btnApplyFilter.addEventListener('click', () => {
                 state.tracks.page = 0;
                 loadTracks();
-            }
-        });
-        elements.btnPrevPage.addEventListener('click', () => {
-            if (state.tracks.page > 0) {
-                state.tracks.page--;
-                loadTracks();
-            }
-        });
-        elements.btnNextPage.addEventListener('click', () => {
-            if (state.tracks.page < state.tracks.totalPages - 1) {
-                state.tracks.page++;
-                loadTracks();
-            }
-        });
+            });
+        }
+        if (elements.trackSearch) {
+            elements.trackSearch.addEventListener('keyup', (e) => {
+                if (e.key === 'Enter') {
+                    state.tracks.page = 0;
+                    loadTracks();
+                }
+            });
+        }
+        if (elements.btnPrevPage) {
+            elements.btnPrevPage.addEventListener('click', () => {
+                if (state.tracks.page > 0) {
+                    state.tracks.page--;
+                    loadTracks();
+                }
+            });
+        }
+        if (elements.btnNextPage) {
+            elements.btnNextPage.addEventListener('click', () => {
+                if (state.tracks.page < state.tracks.totalPages - 1) {
+                    state.tracks.page++;
+                    loadTracks();
+                }
+            });
+        }
     }
 
     async function loadTracks() {
-        state.tracks.search = elements.trackSearch.value;
-        state.tracks.statusFilter = elements.trackStatusFilter.value;
+        state.tracks.search = elements.trackSearch ? elements.trackSearch.value : '';
+        state.tracks.statusFilter = elements.trackStatusFilter ? elements.trackStatusFilter.value : '';
         try {
             const result = await api.getTracks(
                 state.tracks.page,
@@ -328,6 +376,7 @@
     }
 
     function renderTracksTable() {
+        if (!elements.tracksTbody) return;
         if (state.tracks.data.length === 0) {
             elements.tracksTbody.innerHTML = '<tr><td colspan="8" class="muted">Keine Tracks gefunden</td></tr>';
             return;
@@ -336,11 +385,11 @@
             .map(track => `
                 <tr data-track-id="${track.id}">
                     <td>${track.id}</td>
-                    <td>${escapeHtml(track.artistName || '–')}</td>
+                    <td>${escapeHtml(track.artist || '–')}</td>
                     <td>${escapeHtml(track.title || '–')}</td>
-                    <td>${escapeHtml(track.albumName || '–')}</td>
-                    <td><span class="status-badge ${track.lyricsStatus || 'PENDING'}">${track.lyricsStatus || 'PENDING'}</span></td>
-                    <td>${escapeHtml(track.sentimentLabel || 'Kein Sentiment')}</td>
+                    <td>${escapeHtml(track.album || '–')}</td>
+                    <td><span class="status-badge status-${track.lyricsStatus || 'PENDING'}">${track.lyricsStatus || 'PENDING'}</span></td>
+                    <td>${formatSentimentLabel(track.sentimentScore)}</td>
                     <td>${formatSentiment(track.sentimentScore)}</td>
                     <td><button class="btn btn-small btn-details" data-track-id="${track.id}">Details</button></td>
                 </tr>
@@ -352,9 +401,15 @@
     }
 
     function updatePagination() {
-        elements.paginationInfo.textContent = `Seite ${state.tracks.page + 1} von ${state.tracks.totalPages || 1}`;
-        elements.btnPrevPage.disabled = state.tracks.page === 0;
-        elements.btnNextPage.disabled = state.tracks.page >= (state.tracks.totalPages - 1);
+        if (elements.paginationInfo) {
+            elements.paginationInfo.textContent = `Seite ${state.tracks.page + 1} von ${state.tracks.totalPages || 1}`;
+        }
+        if (elements.btnPrevPage) {
+            elements.btnPrevPage.disabled = state.tracks.page === 0;
+        }
+        if (elements.btnNextPage) {
+            elements.btnNextPage.disabled = state.tracks.page >= (state.tracks.totalPages - 1);
+        }
     }
 
     async function showTrackDetails(trackId) {
@@ -362,15 +417,16 @@
             const track = await api.getTrackById(trackId);
             const html = `
                 <div class="modal-header">
-                    <h2>${escapeHtml(track.artistName || 'Unbekannt')} – ${escapeHtml(track.title || 'Unbekannt')}</h2>
+                    <h2>${escapeHtml(track.artist || 'Unbekannt')} – ${escapeHtml(track.title || 'Unbekannt')}</h2>
                 </div>
                 <div class="modal-body">
                     <div class="detail-grid">
-                        <div class="detail-item"><strong>Album:</strong> ${escapeHtml(track.albumName || '–')}</div>
-                        <div class="detail-item"><strong>Lyrics-Status:</strong> <span class="status-badge ${track.lyricsStatus || 'PENDING'}">${track.lyricsStatus || 'PENDING'}</span></div>
-                        <div class="detail-item"><strong>Sentiment:</strong> ${escapeHtml(track.sentimentLabel || 'Kein Sentiment')} (${formatSentiment(track.sentimentScore)})</div>
+                        <div class="detail-item"><strong>Album:</strong> ${escapeHtml(track.album || '–')}</div>
+                        <div class="detail-item"><strong>Lyrics-Status:</strong> <span class="status-badge status-${track.lyricsStatus || 'PENDING'}">${track.lyricsStatus || 'PENDING'}</span></div>
+                        <div class="detail-item"><strong>Sentiment:</strong> ${formatSentimentLabel(track.sentimentScore)} (${formatSentiment(track.sentimentScore)})</div>
                         <div class="detail-item"><strong>Genre:</strong> ${escapeHtml(track.genre || '–')}</div>
                         <div class="detail-item"><strong>Jahr:</strong> ${escapeHtml(track.releaseYear || '–')}</div>
+                        ${track.theme ? `<div class="detail-item"><strong>Thema:</strong> ${escapeHtml(track.theme)}</div>` : ''}
                     </div>
                     ${track.lyrics ? `
                         <div class="lyrics-section">
@@ -403,39 +459,33 @@
     }
 
     function renderGenreStats(stats) {
+        if (!elements.statsGenre) return;
         if (!stats || stats.length === 0) {
-            elements.statsGenre.innerHTML = '<p class="muted">Noch keine Genre-Daten verfügbar. Nutze "Songs laden" (neue Songs) oder "Genre/Jahr nachladen" (vorhandene Songs), um Genre-Daten von Deezer zu ergänzen.</p>';
+            elements.statsGenre.innerHTML = '<p class="muted">Keine Genre-Daten verfügbar. Hinweis: Genre muss von Deezer geladen werden (siehe README).</p>';
             return;
         }
-        const maxScore = Math.max(...stats.map(s => s.averageSentimentScore || 0), 0.0001);
         elements.statsGenre.innerHTML = stats
             .map(s => `
-                <div class="stats-row">
-                    <span class="stats-row-label">${escapeHtml(s.genre || 'Unbekannt')}</span>
-                    <div class="stats-bar-track">
-                        <div class="stats-bar-fill" style="width: ${Math.max(0, (s.averageSentimentScore || 0) / maxScore * 100)}%"></div>
-                    </div>
-                    <span class="stats-row-value">${formatSentiment(s.averageSentimentScore)} (${s.trackCount} Songs)</span>
+                <div class="stat-item">
+                    <span class="stat-genre">${escapeHtml(s.genre || 'Unbekannt')}</span>
+                    <span class="stat-value">${formatSentiment(s.averageSentiment)}</span>
                 </div>
             `)
             .join('');
     }
 
     function renderYearStats(stats) {
+        if (!elements.statsYear) return;
         if (!stats || stats.length === 0) {
-            elements.statsYear.innerHTML = '<p class="muted">Noch keine Jahr-Daten verfügbar. Nutze "Songs laden" (neue Songs) oder "Genre/Jahr nachladen" (vorhandene Songs), um Erscheinungsjahre von Deezer zu ergänzen.</p>';
+            elements.statsYear.innerHTML = '<p class="muted">Keine Jahr-Daten verfügbar. Hinweis: Jahr muss von Deezer geladen werden (siehe README).</p>';
             return;
         }
         const sorted = [...stats].sort((a, b) => (b.year || 0) - (a.year || 0));
-        const maxScore = Math.max(...sorted.map(s => s.averageSentimentScore || 0), 0.0001);
         elements.statsYear.innerHTML = sorted
             .map(s => `
-                <div class="stats-row">
-                    <span class="stats-row-label">${s.year || 'Unbekannt'}</span>
-                    <div class="stats-bar-track">
-                        <div class="stats-bar-fill" style="width: ${Math.max(0, (s.averageSentimentScore || 0) / maxScore * 100)}%"></div>
-                    </div>
-                    <span class="stats-row-value">${formatSentiment(s.averageSentimentScore)} (${s.trackCount} Songs)</span>
+                <div class="stat-item">
+                    <span class="stat-year">${s.year || 'Unbekannt'}</span>
+                    <span class="stat-value">${formatSentiment(s.averageSentiment)}</span>
                 </div>
             `)
             .join('');
@@ -444,19 +494,358 @@
     // ==================== MODAL ====================
 
     function initModal() {
-        elements.modalCloseBtn.addEventListener('click', () => {
-            elements.modalOverlay.classList.add('hidden');
-        });
-        elements.modalOverlay.addEventListener('click', (e) => {
-            if (e.target === elements.modalOverlay) {
+        if (elements.modalCloseBtn) {
+            elements.modalCloseBtn.addEventListener('click', () => {
                 elements.modalOverlay.classList.add('hidden');
-            }
-        });
+            });
+        }
+        if (elements.modalOverlay) {
+            elements.modalOverlay.addEventListener('click', (e) => {
+                if (e.target === elements.modalOverlay) {
+                    elements.modalOverlay.classList.add('hidden');
+                }
+            });
+        }
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && !elements.modalOverlay.classList.contains('hidden')) {
+            if (e.key === 'Escape' && elements.modalOverlay && !elements.modalOverlay.classList.contains('hidden')) {
                 elements.modalOverlay.classList.add('hidden');
             }
         });
+    }
+
+    // ==================== THEME CLASSIFICATION ====================
+
+    function initThemes() {
+        if (elements.btnClassifyTheme) {
+            elements.btnClassifyTheme.addEventListener('click', handleClassifyTheme);
+        }
+        if (elements.btnTrainTheme) {
+            elements.btnTrainTheme.addEventListener('click', handleTrainTheme);
+        }
+        if (elements.btnClassifyAll) {
+            elements.btnClassifyAll.addEventListener('click', handleClassifyAll);
+        }
+    }
+
+    async function handleClassifyTheme() {
+        const artist = elements.themeArtist?.value?.trim();
+        const title = elements.themeTitle?.value?.trim();
+
+        if (!artist || !title) {
+            showResult(elements.themeResult, 'Bitte Künstler und Titel eingeben', true);
+            return;
+        }
+
+        showLoading(elements.themeResult, true);
+        try {
+            const response = await api.classifyTheme(artist, title);
+
+            if (response.error) {
+                showResult(elements.themeResult, `Fehler: ${response.error}`, true);
+                return;
+            }
+
+            const themeDistHtml = Object.entries(response.themeDistribution || {})
+                .map(([theme, percent]) => `<div><strong>${theme}:</strong> ${percent}%</div>`)
+                .join('');
+
+            if (elements.themeResult) {
+                elements.themeResult.innerHTML = `
+                    <div><strong>Vorhergesagtes Thema:</strong> ${response.predictedTheme || '–'}</div>
+                    <div style="margin-top: 1rem;"><strong>Themenverteilung:</strong></div>
+                    ${themeDistHtml}
+                `;
+                elements.themeResult.classList.remove('hidden', 'result-box-error');
+                elements.themeResult.classList.add('result-box-success');
+            }
+        } catch (error) {
+            showResult(elements.themeResult, `Fehler: ${error.message}`, true);
+        } finally {
+            showLoading(elements.themeResult, false);
+        }
+    }
+
+    async function handleTrainTheme() {
+        showLoading(elements.themeTrainResult, true);
+        try {
+            const response = await api.trainThemeClassifier();
+
+            if (response.error) {
+                showResult(elements.themeTrainResult, `Fehler: ${response.error || response.message}`, true);
+                return;
+            }
+
+            showResult(elements.themeTrainResult, `Klassifikator trainiert mit ${response.trainingSamples} Tracks!`, false);
+            showToast('Klassifikator trainiert! Jetzt können Themen vorhergesagt werden.');
+        } catch (error) {
+            showResult(elements.themeTrainResult, `Fehler: ${error.message}`, true);
+        } finally {
+            showLoading(elements.themeTrainResult, false);
+        }
+    }
+
+    async function handleClassifyAll() {
+        showLoading(elements.themeTrainResult, true);
+        try {
+            const response = await api.classifyAllThemes();
+
+            if (response.error) {
+                showResult(elements.themeTrainResult, `Fehler: ${response.error || response.message}`, true);
+                return;
+            }
+
+            showResult(elements.themeTrainResult, `Klassifiziert: ${response.classifiedTracks} Tracks, übersprungen: ${response.skippedTracks}`, false);
+            showToast(`Alle Tracks klassifiziert!`);
+            loadTracks();
+        } catch (error) {
+            showResult(elements.themeTrainResult, `Fehler: ${error.message}`, true);
+        } finally {
+            showLoading(elements.themeTrainResult, false);
+        }
+    }
+
+    // ==================== STYLE ANALYSIS ====================
+
+    function initStyle() {
+        if (elements.btnCompareArtists) {
+            elements.btnCompareArtists.addEventListener('click', handleCompareArtists);
+        }
+        if (elements.btnFindSimilar) {
+            elements.btnFindSimilar.addEventListener('click', handleFindSimilar);
+        }
+    }
+
+    async function handleCompareArtists() {
+        const artist1 = elements.artist1?.value?.trim();
+        const artist2 = elements.artist2?.value?.trim();
+
+        if (!artist1 || !artist2) {
+            showResult(elements.styleCompareResult, 'Bitte zwei Künstler eingeben', true);
+            return;
+        }
+
+        showLoading(elements.styleCompareResult, true);
+        try {
+            const response = await api.compareArtists(artist1, artist2);
+
+            if (response.error) {
+                showResult(elements.styleCompareResult, `Fehler: ${response.error}`, true);
+                return;
+            }
+
+            if (elements.styleCompareResult) {
+                elements.styleCompareResult.innerHTML = `
+                    <div><strong>Ähnlichkeit:</strong> ${response.similarity}</div>
+                    <div style="margin-top: 1rem;">
+                        <strong>${response.artist1} Features:</strong>
+                        <pre style="margin-top: 0.5rem;">${JSON.stringify(response.featuresArtist1, null, 2)}</pre>
+                    </div>
+                    <div style="margin-top: 1rem;">
+                        <strong>${response.artist2} Features:</strong>
+                        <pre style="margin-top: 0.5rem;">${JSON.stringify(response.featuresArtist2, null, 2)}</pre>
+                    </div>
+                `;
+                elements.styleCompareResult.classList.remove('hidden', 'result-box-error');
+                elements.styleCompareResult.classList.add('result-box-success');
+            }
+        } catch (error) {
+            showResult(elements.styleCompareResult, `Fehler: ${error.message}`, true);
+        } finally {
+            showLoading(elements.styleCompareResult, false);
+        }
+    }
+
+    async function handleFindSimilar() {
+        const artist = elements.similarArtist?.value?.trim();
+        const limit = parseInt(elements.similarLimit?.value) || 5;
+
+        if (!artist) {
+            showResult(elements.similarResult, 'Bitte Künstler eingeben', true);
+            return;
+        }
+
+        showLoading(elements.similarResult, true);
+        try {
+            const response = await api.findSimilarArtists(artist, limit);
+
+            if (Object.keys(response).length === 0) {
+                showResult(elements.similarResult, 'Keine ähnlichen Künstler gefunden', true);
+                return;
+            }
+
+            const similarHtml = Object.entries(response)
+                .map(([artist, similarity]) => `<div>${artist}: ${similarity}%</div>`)
+                .join('');
+
+            if (elements.similarResult) {
+                elements.similarResult.innerHTML = `
+                    <div><strong>Ähnlichste Künstler zu ${artist}:</strong></div>
+                    ${similarHtml}
+                `;
+                elements.similarResult.classList.remove('hidden', 'result-box-error');
+                elements.similarResult.classList.add('result-box-success');
+            }
+        } catch (error) {
+            showResult(elements.similarResult, `Fehler: ${error.message}`, true);
+        } finally {
+            showLoading(elements.similarResult, false);
+        }
+    }
+
+    // ==================== LYRICS DNA ====================
+
+    function initDNA() {
+        if (elements.btnLoadDNA) {
+            elements.btnLoadDNA.addEventListener('click', handleLoadDNA);
+        }
+        if (elements.btnGetDNA) {
+            elements.btnGetDNA.addEventListener('click', handleGetDNA);
+        }
+    }
+
+    async function handleLoadDNA() {
+        showLoading(elements.dnaResult, true);
+        try {
+            const data = await api.getDNAVisualization();
+
+            if (!data || data.length === 0) {
+                showResult(elements.dnaResult, 'Keine DNA-Daten verfügbar. Zuerst Tracks laden!', true);
+                return;
+            }
+
+            renderDNAVisualization(data);
+            if (elements.dnaResult) {
+                elements.dnaResult.classList.add('hidden');
+            }
+        } catch (error) {
+            showResult(elements.dnaResult, `Fehler: ${error.message}`, true);
+        } finally {
+            showLoading(elements.dnaResult, false);
+        }
+    }
+
+    function renderDNAVisualization(data) {
+        if (!elements.dnaVisualization) return;
+
+        elements.dnaVisualization.innerHTML = `
+            <style>
+                .dna-scatterplot {
+                    position: relative;
+                    width: 100%;
+                    height: 400px;
+                    border: 1px solid var(--border-color);
+                    border-radius: var(--border-radius);
+                    background: var(--surface-hover);
+                }
+                .dna-point {
+                    position: absolute;
+                    border-radius: 50%;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    color: white;
+                    font-size: 10px;
+                    font-weight: bold;
+                    text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+                    transition: transform 0.2s ease;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+                }
+                .dna-point:hover {
+                    transform: scale(1.5);
+                    z-index: 10;
+                }
+                .dna-tooltip {
+                    position: absolute;
+                    background: var(--surface-color);
+                    border: 1px solid var(--border-color);
+                    border-radius: var(--border-radius);
+                    padding: 0.5rem;
+                    font-size: 0.8rem;
+                    z-index: 100;
+                    pointer-events: none;
+                    display: none;
+                    max-width: 300px;
+                }
+            </style>
+            <div class="dna-scatterplot" id="dna-scatterplot">
+                ${data.map(point => `
+                    <div class="dna-point"
+                         style="left: ${(point.x * 10 + 50)}%; top: ${(10 - point.y * 10 + 10)}%;
+                               background: ${point.color === 'positive' ? 'var(--success-color)' : 'var(--error-color)'};
+                               width: ${point.size}px; height: ${point.size}px;"
+                         title="${point.artist} (${point.topTheme})"
+                         onmouseenter="showDNATooltip(event, ${JSON.stringify(point).replace(/"/g, '&quot;')})"
+                         onmouseleave="hideDNATooltip()">
+                    </div>
+                `).join('')}
+                <div class="dna-tooltip" id="dna-tooltip"></div>
+            </div>
+        `;
+    }
+
+    function showDNATooltip(event, point) {
+        const tooltip = document.getElementById('dna-tooltip');
+        if (!tooltip) return;
+
+        const themeHtml = Object.entries(point.themes || {})
+            .map(([theme, percent]) => `<div>${theme}: ${percent}%</div>`)
+            .join('');
+
+        tooltip.innerHTML = `
+            <div><strong>${point.artist}</strong></div>
+            <div>Top Thema: ${point.topTheme}</div>
+            <div>Themenverteilung:</div>
+            ${themeHtml}
+            <div>Sentiment: ${point.averageSentiment ? point.averageSentiment.toFixed(2) : 'N/A'}</div>
+        `;
+        tooltip.style.display = 'block';
+        tooltip.style.left = (event.pageX + 10) + 'px';
+        tooltip.style.top = (event.pageY + 10) + 'px';
+    }
+
+    function hideDNATooltip() {
+        const tooltip = document.getElementById('dna-tooltip');
+        if (tooltip) tooltip.style.display = 'none';
+    }
+
+    async function handleGetDNA() {
+        const artist = elements.dnaArtist?.value?.trim();
+
+        if (!artist) {
+            showResult(elements.dnaDetailsResult, 'Bitte Künstler eingeben', true);
+            return;
+        }
+
+        showLoading(elements.dnaDetailsResult, true);
+        try {
+            const response = await api.getArtistDNA(artist);
+
+            if (response.error) {
+                showResult(elements.dnaDetailsResult, `Fehler: ${response.error}`, true);
+                return;
+            }
+
+            const themeHtml = Object.entries(response.themeDistribution || {})
+                .map(([theme, percent]) => `<div>${theme}: ${percent}%</div>`)
+                .join('');
+
+            if (elements.dnaDetailsResult) {
+                elements.dnaDetailsResult.innerHTML = `
+                    <div><strong>Künstler:</strong> ${response.artist}</div>
+                    <div><strong>Durchschnittliches Sentiment:</strong> ${response.averageSentiment.toFixed(3)}</div>
+                    <div><strong>Feature-Vektor:</strong> [${response.featureVector.map(v => v.toFixed(3)).join(', ')}]</div>
+                    <div style="margin-top: 1rem;"><strong>Themenverteilung:</strong></div>
+                    ${themeHtml}
+                `;
+                elements.dnaDetailsResult.classList.remove('hidden', 'result-box-error');
+                elements.dnaDetailsResult.classList.add('result-box-success');
+            }
+        } catch (error) {
+            showResult(elements.dnaDetailsResult, `Fehler: ${error.message}`, true);
+        } finally {
+            showLoading(elements.dnaDetailsResult, false);
+        }
     }
 
     // ==================== INIT ====================
@@ -469,6 +858,10 @@
         initBackfillMetadata();
         initTracks();
         initModal();
+        initThemes();
+        initStyle();
+        initDNA();
+        
         loadDashboard();
         loadTracks();
     }

@@ -17,14 +17,18 @@ public class Track {
     @Column(name = "deezer_album_id")
     private Long deezerAlbumId;
 
-    @Column(name = "artist_name", nullable = false)
+    @Column(name = "artist_name", nullable = false, columnDefinition = "VARCHAR(255)")
     private String artistName;
 
-    @Column(name = "title", nullable = false)
+    @Column(name = "title", nullable = false, columnDefinition = "VARCHAR(500)")
     private String title;
 
     @Column(name = "album_name")
     private String albumName;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "theme")
+    private Theme theme;
 
     @Column(name = "genre")
     private String genre;
@@ -116,6 +120,14 @@ public class Track {
 
     public void setAlbumName(String albumName) {
         this.albumName = albumName;
+    }
+
+    public Theme getTheme() {
+        return theme;
+    }
+
+    public void setTheme(Theme theme) {
+        this.theme = theme;
     }
 
     public String getGenre() {

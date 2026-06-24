@@ -41,7 +41,7 @@ public class TrackController {
         String normalizedSearch = (search != null && !search.isBlank()) ? search.trim() : null;
 
         return PagedTrackResponse.from(
-                trackRepository.search(status, normalizedSearch, PageRequest.of(page, size))
+                trackRepository.customSearchTracks(status, normalizedSearch, PageRequest.of(page, size))
                         .map(TrackResponse::from));
     }
 

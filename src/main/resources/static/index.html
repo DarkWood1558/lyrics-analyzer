@@ -19,6 +19,9 @@
         <button class="tab-button" data-tab="ingestion">Songs laden</button>
         <button class="tab-button" data-tab="tracks">Tracks</button>
         <button class="tab-button" data-tab="stats">Statistiken</button>
+        <button class="tab-button" data-tab="themes">Themenklassifikation</button>
+        <button class="tab-button" data-tab="style">Künstler-Stil</button>
+        <button class="tab-button" data-tab="dna">Lyrics DNA</button>
     </nav>
 
     <main>
@@ -167,6 +170,80 @@
                 <div id="stats-year" class="stats-list">
                     <p class="muted">Lade Statistik …</p>
                 </div>
+            </div>
+        </section>
+
+        <!-- THEMES -->
+        <section class="tab-panel" id="panel-themes">
+            <h2>Themenklassifikation</h2>
+
+            <div class="card">
+                <h3>Thema für einzelnen Track vorhersagen</h3>
+                <div class="form-row">
+                    <input type="text" id="theme-artist" placeholder="Künstler">
+                    <input type="text" id="theme-title" placeholder="Titel">
+                    <button class="btn btn-primary" id="btn-classify-theme">Thema vorhersagen</button>
+                </div>
+                <div id="theme-result" class="result-box hidden"></div>
+            </div>
+
+            <div class="card">
+                <h3>Klassifikator trainieren</h3>
+                <p class="muted">Trainiert den Klassifikator mit manuell gelabelten Tracks und klassifiziert alle ungelabelten Tracks.</p>
+                <div class="form-row">
+                    <button class="btn btn-primary" id="btn-train-theme">Klassifikator trainieren</button>
+                    <button class="btn btn-secondary" id="btn-classify-all">Alle klassifizieren</button>
+                </div>
+                <div id="theme-train-result" class="result-box hidden"></div>
+            </div>
+        </section>
+
+        <!-- STYLE -->
+        <section class="tab-panel" id="panel-style">
+            <h2>Künstler-Stil-Analyse</h2>
+
+            <div class="card">
+                <h3>Künstler vergleichen</h3>
+                <div class="form-row">
+                    <input type="text" id="artist1" placeholder="Künstler 1">
+                    <input type="text" id="artist2" placeholder="Künstler 2">
+                    <button class="btn btn-primary" id="btn-compare-artists">Vergleichen</button>
+                </div>
+                <div id="style-compare-result" class="result-box hidden"></div>
+            </div>
+
+            <div class="card">
+                <h3>Ähnliche Künstler finden</h3>
+                <div class="form-row">
+                    <input type="text" id="similar-artist" placeholder="Künstler">
+                    <input type="number" id="similar-limit" value="5" min="1" max="20">
+                    <button class="btn btn-primary" id="btn-find-similar">Ähnliche Künstler finden</button>
+                </div>
+                <div id="similar-result" class="result-box hidden"></div>
+            </div>
+        </section>
+
+        <!-- DNA -->
+        <section class="tab-panel" id="panel-dna">
+            <h2>Lyrics DNA</h2>
+
+            <div class="card">
+                <h3>Künstler-DNA Visualisierung</h3>
+                <p class="muted">Zeigt alle Künstler in einem 2D-Raum basierend auf ihrem Schreibstil.</p>
+                <div class="form-row">
+                    <button class="btn btn-primary" id="btn-load-dna">DNA laden</button>
+                </div>
+                <div id="dna-visualization" style="height: 500px; margin-top: 1rem;"></div>
+                <div id="dna-result" class="result-box hidden"></div>
+            </div>
+
+            <div class="card">
+                <h3>Künstler-DNA Details</h3>
+                <div class="form-row">
+                    <input type="text" id="dna-artist" placeholder="Künstler">
+                    <button class="btn btn-primary" id="btn-get-dna">DNA abrufen</button>
+                </div>
+                <div id="dna-details-result" class="result-box hidden"></div>
             </div>
         </section>
 

@@ -13,7 +13,7 @@ import java.util.Optional;
 
 public interface TrackRepository extends JpaRepository<Track, Long> {
 
-    @Query(value = "SELECT t.* FROM track t WHERE LOWER(t.artist_name) = LOWER(CAST(:artistName AS TEXT)) AND LOWER(t.title) = LOWER(CAST(:title AS TEXT)) LIMIT 1", nativeQuery = true)
+    @Query(value = "SELECT t.* FROM track t WHERE LOWER(CAST(t.artist_name AS TEXT)) = LOWER(CAST(:artistName AS TEXT)) AND LOWER(CAST(t.title AS TEXT)) = LOWER(CAST(:title AS TEXT)) LIMIT 1", nativeQuery = true)
     Optional<Track> findByArtistNameIgnoreCaseAndTitleIgnoreCase(@Param("artistName") String artistName, @Param("title") String title);
 
     Optional<Track> findByDeezerId(Long deezerId);
@@ -23,6 +23,9 @@ public interface TrackRepository extends JpaRepository<Track, Long> {
     List<Track> findByLyricsStatusAndSentimentLabelIsNull(LyricsStatus status, Pageable pageable);
 
     long countByLyricsStatus(LyricsStatus status);
+
+    @Query(value = "SELECT t.* FROM track t WHERE LOWER(CAST(t.artist_name AS TEXT)) = LOWER(CAST(:artistName AS TEXT))", nativeQuery = true)
+    List<Track> findByArtistNameIgnoreCase(@Param("artistName") String artistName);
 
     /**
      * Tracks, für die ein nachträglicher Metadaten-Abruf (Genre/Erscheinungsjahr) über die
@@ -42,20 +45,20 @@ public interface TrackRepository extends JpaRepository<Track, Long> {
     /**
      * Flexible Such-/Filter-Query für die GUI-Track-Liste.
      * {@code status} und {@code search} sind optional (NULL = Filter nicht angewendet) -
-     * dadurch deckt eine einzige Query alle Kombinationen ab (kein Filter / nur Status /
+     * Dadurch deckt eine einzige Query alle Kombinationen ab (kein Filter / nur Status /
      * nur Suche / beides), ohne mehrere Repository-Methoden pflegen zu müssen.
      */
-    @Query(value = """
-           SELECT t.* FROM track t
-           WHERE (COALESCE(:status, '') = '' OR t.lyrics_status = CAST(:status AS VARCHAR(20)))
+    @Query(nativeQuery = true, value = """
+           SELECT * FROM track
+           WHERE (COALESCE(:status, '') = '' OR lyrics_status = CAST(:status AS VARCHAR(20)))
            AND (COALESCE(:search, '') = '' OR
-                LOWER(t.artist_name) LIKE LOWER('%' || CAST(:search AS TEXT) || '%') ESCAPE '' OR
-                LOWER(t.title) LIKE LOWER('%' || CAST(:search AS TEXT) || '%') ESCAPE '')
-           ORDER BY t.id DESC
-           """, nativeQuery = true)
-    Page<Track> search(@Param("status") LyricsStatus status,
-                       @Param("search") String search,
-                       Pageable pageable);
+                artist_name ILIKE ('%' || :search || '%') OR
+                title ILIKE ('%' || :search || '%'))
+           ORDER BY id DESC
+           """)
+    Page<Track> customSearchTracks(@Param("status") LyricsStatus status,
+                                  @Param("search") String search,
+                                  Pageable pageable);
 
     @Query("""
            SELECT t.genre AS genre, AVG(t.sentimentScore) AS avgScore, COUNT(t) AS trackCount

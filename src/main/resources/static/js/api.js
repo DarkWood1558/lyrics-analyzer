@@ -77,6 +77,60 @@
         return counts;
     }
 
+    // ==================== THEME CLASSIFICATION ====================
+
+    async function trainThemeClassifier() {
+        return apiRequest('/api/analysis/theme/train', { method: 'POST' });
+    }
+
+    async function classifyTheme(artist, title) {
+        return apiRequest(`/api/analysis/theme/classify?artist=${encodeURIComponent(artist)}&title=${encodeURIComponent(title)}`);
+    }
+
+    async function classifyAllThemes() {
+        return apiRequest('/api/analysis/theme/classify-all', { method: 'POST' });
+    }
+
+    async function isThemeClassifierTrained() {
+        return apiRequest('/api/analysis/theme/trained');
+    }
+
+    // ==================== ARTIST STYLE ANALYSIS ====================
+
+    async function getArtistStyle(artistName) {
+        return apiRequest(`/api/analysis/artist/style/${encodeURIComponent(artistName)}`);
+    }
+
+    async function compareArtists(artist1, artist2) {
+        return apiRequest(`/api/analysis/artist/compare?artist1=${encodeURIComponent(artist1)}&artist2=${encodeURIComponent(artist2)}`);
+    }
+
+    async function findSimilarArtists(artistName, limit = 5) {
+        return apiRequest(`/api/analysis/artist/similar?artistName=${encodeURIComponent(artistName)}&limit=${limit}`);
+    }
+
+    // ==================== LYRICS DNA ====================
+
+    async function getAllDNA() {
+        return apiRequest('/api/analysis/dna/all');
+    }
+
+    async function getDNAVisualization() {
+        return apiRequest('/api/analysis/dna/visualization');
+    }
+
+    async function getArtistDNA(artistName) {
+        return apiRequest(`/api/analysis/dna/${encodeURIComponent(artistName)}`);
+    }
+
+    async function getSimilarArtistsDNA(artistName, limit = 5) {
+        return apiRequest(`/api/analysis/dna/similar?artistName=${encodeURIComponent(artistName)}&limit=${limit}`);
+    }
+
+    async function getAllThemes() {
+        return apiRequest('/api/analysis/themes');
+    }
+
     window.LyricsAnalyzerAPI = {
         searchAndIngestTracks,
         analyzePendingSentiment,
@@ -87,5 +141,20 @@
         getStatsByGenre,
         getStatsByYear,
         getStatusCounts,
+        // Theme Classification
+        trainThemeClassifier,
+        classifyTheme,
+        classifyAllThemes,
+        isThemeClassifierTrained,
+        // Artist Style Analysis
+        getArtistStyle,
+        compareArtists,
+        findSimilarArtists,
+        // Lyrics DNA
+        getAllDNA,
+        getDNAVisualization,
+        getArtistDNA,
+        getSimilarArtistsDNA,
+        getAllThemes,
     };
 })();

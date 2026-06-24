@@ -1,12 +1,16 @@
 /**
  * API-Client für Lyrics Analyzer
  * Definiert globale Variable LyricsAnalyzerAPI
+ *
+ * Nutzt relative Pfade (kein hardcoded "http://localhost:8080"), da das Frontend von der
+ * Spring-Boot-Anwendung selbst unter /static ausgeliefert wird. Relative Pfade funktionieren
+ * dadurch unabhängig von Host/Port (z.B. auch hinter einem Reverse-Proxy).
  */
 
 (function() {
     'use strict';
 
-    const API_BASE = 'http://localhost:8080/api';
+    const API_BASE = '/api';
 
     async function apiRequest(url, options = {}) {
         try {
@@ -67,68 +71,68 @@
         return apiRequest(`${API_BASE}/tracks/stats/by-year`);
     }
 
+    /**
+     * Nutzt den dedizierten Backend-Endpoint /api/tracks/status-counts, statt (wie zuvor)
+     * bis zu 1000 Tracks komplett zu laden und client-seitig zu zählen. Das Backend
+     * berechnet die Zahlen direkt per COUNT-Query (TrackController.statusCounts /
+     * TrackRepository.countByLyricsStatus) - schneller und korrekt auch bei >1000 Tracks.
+     */
     async function getStatusCounts() {
-        const tracks = await getTracks(0, 1000);
-        const counts = { FOUND: 0, NOT_FOUND: 0, ERROR: 0, PENDING: 0 };
-        (tracks.content || []).forEach(track => {
-            const status = track.lyricsStatus || 'PENDING';
-            if (counts[status] !== undefined) counts[status]++;
-        });
-        return counts;
+        return apiRequest(`${API_BASE}/tracks/status-counts`);
     }
 
     // ==================== THEME CLASSIFICATION ====================
 
     async function trainThemeClassifier() {
-        return apiRequest('/api/analysis/theme/train', { method: 'POST' });
+        return apiRequest(`${API_BASE}/analysis/theme/train`, { method: 'POST' });
     }
 
     async function classifyTheme(artist, title) {
-        return apiRequest(`/api/analysis/theme/classify?artist=${encodeURIComponent(artist)}&title=${encodeURIComponent(title)}`);
+        return apiRequest(`${API_BASE}/analysis/theme/classify?artist=${encodeURIComponent(artist)}&title=${encodeURIComponent(title)}`);
     }
 
     async function classifyAllThemes() {
-        return apiRequest('/api/analysis/theme/classify-all', { method: 'POST' });
+        return apiRequest(`${API_BASE}/analysis/theme/classify-all`, { method: 'POST' });
     }
 
     async function isThemeClassifierTrained() {
-        return apiRequest('/api/analysis/theme/trained');
+        return apiRequest(`${API_BASE}/analysis/theme/trained`);
     }
 
     // ==================== ARTIST STYLE ANALYSIS ====================
 
     async function getArtistStyle(artistName) {
-        return apiRequest(`/api/analysis/artist/style/${encodeURIComponent(artistName)}`);
+        return apiRequest(`${API_BASE}/analysis/artist/style/${encodeURIComponent(artistName)}`);
     }
 
     async function compareArtists(artist1, artist2) {
-        return apiRequest(`/api/analysis/artist/compare?artist1=${encodeURIComponent(artist1)}&artist2=${encodeURIComponent(artist2)}`);
+        return apiRequest(`${API_BASE}/analysis/artist/compare?artist1=${encodeURIComponent(artist1)}&artist2=${encodeURIComponent(artist2)}`);
     }
 
     async function findSimilarArtists(artistName, limit = 5) {
-        return apiRequest(`/api/analysis/artist/similar?artistName=${encodeURIComponent(artistName)}&limit=${limit}`);
+        return apiRequest(`${API_BASE}/analysis/artist/similar?artistName=${encodeURIComponent(artistName)}&limit=${limit}`);
     }
 
     // ==================== LYRICS DNA ====================
 
     async function getAllDNA() {
-        return apiRequest('/api/analysis/dna/all');
+        return apiRequest(`${API_BASE}/analysis/dna/all`);
     }
 
     async function getDNAVisualization() {
-        return apiRequest('/api/analysis/dna/visualization');
+        return apiRequest(`${API_BASE}/analysis/dna/visualization`);
     }
 
     async function getArtistDNA(artistName) {
-        return apiRequest(`/api/analysis/dna/${encodeURIComponent(artistName)}`);
+        return apiRequest(`${API_BASE}/analysis/dna/${encodeURIComponent(artistName)}`);
     }
 
     async function getSimilarArtistsDNA(artistName, limit = 5) {
-        return apiRequest(`/api/analysis/dna/similar?artistName=${encodeURIComponent(artistName)}&limit=${limit}`);
+        return apiRequest(`${API_BASE}/analysis/dna/similar?artistName=${encodeURIComponent(artistName)}&limit=${limit}`);
     }
 
     async function getAllThemes() {
-        return apiRequest('/api/analysis/themes');
+        return apiRequest(`${API_BASE}/analysis/themes`);
     }
 
     window.LyricsAnalyzerAPI = {

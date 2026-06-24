@@ -33,13 +33,13 @@
         tabs: document.getElementById('tabs'),
         tabPanels: document.querySelectorAll('.tab-panel'),
         tabButtons: document.querySelectorAll('.tab-button'),
-        
+
         // Dashboard
         countFOUND: document.getElementById('count-FOUND'),
         countNOT_FOUND: document.getElementById('count-NOT_FOUND'),
         countERROR: document.getElementById('count-ERROR'),
         countPENDING: document.getElementById('count-PENDING'),
-        
+
         // Ingestion
         ingestionForm: document.getElementById('ingestion-form'),
         searchQuery: document.getElementById('search-query'),
@@ -47,21 +47,21 @@
         ingestionLoading: document.getElementById('ingestion-loading'),
         ingestionResult: document.getElementById('ingestion-result'),
         ingestionHistory: document.getElementById('ingestion-history'),
-        
+
         // Sentiment
         sentimentLimit: document.getElementById('sentiment-limit'),
         btnRunSentiment: document.getElementById('btn-run-sentiment'),
         sentimentResult: document.getElementById('sentiment-result'),
-        
+
         // Retry Errors
         retryLimit: document.getElementById('retry-limit'),
         btnRetryErrors: document.getElementById('btn-retry-errors'),
         retryResult: document.getElementById('retry-result'),
-        
+
         // Backfill Metadata
         btnBackfillMetadata: document.getElementById('btn-backfill-metadata'),
         backfillResult: document.getElementById('backfill-result'),
-        
+
         // Tracks
         trackSearch: document.getElementById('track-search'),
         trackStatusFilter: document.getElementById('track-status-filter'),
@@ -71,19 +71,19 @@
         paginationInfo: document.getElementById('pagination-info'),
         btnPrevPage: document.getElementById('btn-prev-page'),
         btnNextPage: document.getElementById('btn-next-page'),
-        
+
         // Stats
         statsGenre: document.getElementById('stats-genre'),
         statsYear: document.getElementById('stats-year'),
-        
+
         // Modal
         modalOverlay: document.getElementById('track-modal-overlay'),
         modalContent: document.getElementById('modal-content'),
         modalCloseBtn: document.getElementById('modal-close-btn'),
-        
+
         // Toast
         toast: document.getElementById('toast'),
-        
+
         // Theme Classification
         themeArtist: document.getElementById('theme-artist'),
         themeTitle: document.getElementById('theme-title'),
@@ -92,7 +92,7 @@
         btnTrainTheme: document.getElementById('btn-train-theme'),
         btnClassifyAll: document.getElementById('btn-classify-all'),
         themeTrainResult: document.getElementById('theme-train-result'),
-        
+
         // Style Analysis
         artist1: document.getElementById('artist1'),
         artist2: document.getElementById('artist2'),
@@ -102,7 +102,7 @@
         similarLimit: document.getElementById('similar-limit'),
         btnFindSimilar: document.getElementById('btn-find-similar'),
         similarResult: document.getElementById('similar-result'),
-        
+
         // DNA
         btnLoadDNA: document.getElementById('btn-load-dna'),
         dnaVisualization: document.getElementById('dna-visualization'),
@@ -134,16 +134,32 @@
         setTimeout(() => elements.toast.classList.add('hidden'), duration);
     }
 
+    /**
+     * sentimentScore liegt auf der CoreNLP-Skala 0.0 (very negative) - 4.0 (very positive),
+     * NICHT auf einer -1..1-Skala. Reine Zahlenausgabe mit 3 Nachkommastellen.
+     */
     function formatSentiment(score) {
         if (score === null || score === undefined) return '–';
         return score.toFixed(3);
     }
 
-    function formatSentimentLabel(score) {
-        if (score === null || score === undefined) return 'Kein Sentiment';
-        if (score > 0.2) return 'Positiv';
-        if (score < -0.2) return 'Negativ';
-        return 'Neutral';
+    /**
+     * Nutzt das vom Backend bereits berechnete sentimentLabel-Enum
+     * (VERY_NEGATIVE..VERY_POSITIVE), statt den 0..4-Score selbst (falsch) als -1..1
+     * zu interpretieren. Vorher wurde score > 0.2 / < -0.2 geprüft, was auf der
+     * tatsächlichen 0..4-Skala praktisch immer "Positiv" ergeben hätte.
+     */
+    const SENTIMENT_LABEL_TEXT = {
+        VERY_NEGATIVE: 'Sehr negativ',
+        NEGATIVE: 'Negativ',
+        NEUTRAL: 'Neutral',
+        POSITIVE: 'Positiv',
+        VERY_POSITIVE: 'Sehr positiv',
+    };
+
+    function formatSentimentLabel(label) {
+        if (!label) return 'Kein Sentiment';
+        return SENTIMENT_LABEL_TEXT[label] || label;
     }
 
     function escapeHtml(text) {
@@ -165,7 +181,7 @@
         state.currentTab = tabName;
         elements.tabButtons.forEach(b => b.classList.toggle('active', b.dataset.tab === tabName));
         elements.tabPanels.forEach(p => p.classList.toggle('active', p.id === `panel-${tabName}`));
-        
+
         if (tabName === 'dashboard') loadDashboard();
         else if (tabName === 'tracks') loadTracks();
         else if (tabName === 'stats') loadStats();
@@ -202,15 +218,15 @@
         e.preventDefault();
         const searchQuery = elements.searchQuery.value.trim();
         const limit = parseInt(elements.ingestionLimit.value) || 20;
-        
+
         if (!searchQuery) {
             showResult(elements.ingestionResult, 'Bitte Suchbegriff eingeben', true);
             return;
         }
-        
+
         showLoading(elements.ingestionLoading, true);
         elements.ingestionResult.classList.add('hidden');
-        
+
         try {
             const result = await api.searchAndIngestTracks(searchQuery, limit);
             saveToHistory(searchQuery);
@@ -240,7 +256,7 @@
             return;
         }
         elements.ingestionHistory.innerHTML = state.ingestionHistory
-            .map(q => `<li><button class="history-item" data-query="${encodeURIComponent(q)}">${q}</button></li>`)
+            .map(q => `<li><button class="history-item" data-query="${encodeURIComponent(q)}">${escapeHtml(q)}</button></li>`)
             .join('');
         elements.ingestionHistory.querySelectorAll('.history-item').forEach(btn => {
             btn.addEventListener('click', () => {
@@ -262,8 +278,8 @@
         showLoading(elements.sentimentResult, true);
         try {
             const result = await api.analyzePendingSentiment(limit);
-            showResult(elements.sentimentResult, `Analyse für ${result.analyzed || limit} Tracks gestartet`, false);
-            showToast('Sentiment-Analyse läuft im Hintergrund');
+            showResult(elements.sentimentResult, `Analyse für ${result.analyzedCount ?? limit} Tracks abgeschlossen`, false);
+            showToast('Sentiment-Analyse abgeschlossen');
             loadDashboard();
             loadTracks();
             loadStats();
@@ -287,8 +303,8 @@
         showLoading(elements.retryResult, true);
         try {
             const result = await api.retryErrorTracks(limit);
-            showResult(elements.retryResult, `Erneuter Versuch für ${result.retryCount || limit} Tracks gestartet`, false);
-            showToast('Erneuter Ladeversuch läuft');
+            showResult(elements.retryResult, `Erneuter Versuch abgeschlossen: ${result.attempted} versucht, ${result.newlyFetched} neu gefunden, ${result.notFound} nicht gefunden, ${result.stillError} weiterhin Fehler`, false);
+            showToast('Erneuter Ladeversuch abgeschlossen');
             loadDashboard();
             loadTracks();
         } catch (error) {
@@ -307,12 +323,14 @@
     }
 
     async function handleBackfillMetadata() {
-        const limit = parseInt(document.getElementById('metadata-limit')?.value || 50);
+        const limitInput = document.getElementById('metadata-limit');
+        const limit = parseInt(limitInput?.value) || 50;
         showLoading(elements.backfillResult, true);
         try {
             const result = await api.backfillMetadata(limit);
-            showResult(elements.backfillResult, `Metadaten für ${limit} Tracks nachgeladen`, false);
-            showToast('Metadaten-Backfill läuft');
+            showResult(elements.backfillResult, `Metadaten-Backfill abgeschlossen: ${result.attempted} versucht, ${result.updated} aktualisiert, ${result.skipped} übersprungen`, false);
+            showToast('Metadaten-Backfill abgeschlossen');
+            loadStats();
         } catch (error) {
             showResult(elements.backfillResult, `Fehler: ${error.message}`, true);
         } finally {
@@ -375,6 +393,12 @@
         }
     }
 
+    /**
+     * WICHTIG: Das Backend (TrackResponse) liefert die Felder artistName/albumName,
+     * NICHT artist/album. Vorher griff dieser Code auf track.artist/track.album zu,
+     * was immer undefined war - die Tabelle zeigte daher in Künstler- und Album-Spalte
+     * nur "–" an, unabhängig von den tatsächlichen Daten.
+     */
     function renderTracksTable() {
         if (!elements.tracksTbody) return;
         if (state.tracks.data.length === 0) {
@@ -385,11 +409,11 @@
             .map(track => `
                 <tr data-track-id="${track.id}">
                     <td>${track.id}</td>
-                    <td>${escapeHtml(track.artist || '–')}</td>
-                    <td>${escapeHtml(track.title || '–')}</td>
-                    <td>${escapeHtml(track.album || '–')}</td>
+                    <td>${escapeHtml(track.artistName)}</td>
+                    <td>${escapeHtml(track.title)}</td>
+                    <td>${escapeHtml(track.albumName)}</td>
                     <td><span class="status-badge status-${track.lyricsStatus || 'PENDING'}">${track.lyricsStatus || 'PENDING'}</span></td>
-                    <td>${formatSentimentLabel(track.sentimentScore)}</td>
+                    <td>${formatSentimentLabel(track.sentimentLabel)}</td>
                     <td>${formatSentiment(track.sentimentScore)}</td>
                     <td><button class="btn btn-small btn-details" data-track-id="${track.id}">Details</button></td>
                 </tr>
@@ -412,20 +436,24 @@
         }
     }
 
+    /**
+     * Nutzt ebenfalls artistName/albumName statt artist/album (siehe renderTracksTable).
+     * track.theme existiert jetzt im DTO (TrackDetailResponse wurde entsprechend erweitert).
+     */
     async function showTrackDetails(trackId) {
         try {
             const track = await api.getTrackById(trackId);
             const html = `
                 <div class="modal-header">
-                    <h2>${escapeHtml(track.artist || 'Unbekannt')} – ${escapeHtml(track.title || 'Unbekannt')}</h2>
+                    <h2>${escapeHtml(track.artistName)} – ${escapeHtml(track.title)}</h2>
                 </div>
                 <div class="modal-body">
                     <div class="detail-grid">
-                        <div class="detail-item"><strong>Album:</strong> ${escapeHtml(track.album || '–')}</div>
+                        <div class="detail-item"><strong>Album:</strong> ${escapeHtml(track.albumName)}</div>
                         <div class="detail-item"><strong>Lyrics-Status:</strong> <span class="status-badge status-${track.lyricsStatus || 'PENDING'}">${track.lyricsStatus || 'PENDING'}</span></div>
-                        <div class="detail-item"><strong>Sentiment:</strong> ${formatSentimentLabel(track.sentimentScore)} (${formatSentiment(track.sentimentScore)})</div>
-                        <div class="detail-item"><strong>Genre:</strong> ${escapeHtml(track.genre || '–')}</div>
-                        <div class="detail-item"><strong>Jahr:</strong> ${escapeHtml(track.releaseYear || '–')}</div>
+                        <div class="detail-item"><strong>Sentiment:</strong> ${formatSentimentLabel(track.sentimentLabel)} (${formatSentiment(track.sentimentScore)})</div>
+                        <div class="detail-item"><strong>Genre:</strong> ${escapeHtml(track.genre)}</div>
+                        <div class="detail-item"><strong>Jahr:</strong> ${escapeHtml(track.releaseYear)}</div>
                         ${track.theme ? `<div class="detail-item"><strong>Thema:</strong> ${escapeHtml(track.theme)}</div>` : ''}
                     </div>
                     ${track.lyrics ? `
@@ -458,6 +486,10 @@
         }
     }
 
+    /**
+     * Backend liefert averageSentimentScore (siehe TrackController.sentimentByGenre),
+     * nicht averageSentiment.
+     */
     function renderGenreStats(stats) {
         if (!elements.statsGenre) return;
         if (!stats || stats.length === 0) {
@@ -468,7 +500,7 @@
             .map(s => `
                 <div class="stat-item">
                     <span class="stat-genre">${escapeHtml(s.genre || 'Unbekannt')}</span>
-                    <span class="stat-value">${formatSentiment(s.averageSentiment)}</span>
+                    <span class="stat-value">${formatSentiment(s.averageSentimentScore)} (n=${s.trackCount})</span>
                 </div>
             `)
             .join('');
@@ -485,7 +517,7 @@
             .map(s => `
                 <div class="stat-item">
                     <span class="stat-year">${s.year || 'Unbekannt'}</span>
-                    <span class="stat-value">${formatSentiment(s.averageSentiment)}</span>
+                    <span class="stat-value">${formatSentiment(s.averageSentimentScore)} (n=${s.trackCount})</span>
                 </div>
             `)
             .join('');
@@ -546,12 +578,12 @@
             }
 
             const themeDistHtml = Object.entries(response.themeDistribution || {})
-                .map(([theme, percent]) => `<div><strong>${theme}:</strong> ${percent}%</div>`)
+                .map(([theme, percent]) => `<div><strong>${escapeHtml(theme)}:</strong> ${percent}%</div>`)
                 .join('');
 
             if (elements.themeResult) {
                 elements.themeResult.innerHTML = `
-                    <div><strong>Vorhergesagtes Thema:</strong> ${response.predictedTheme || '–'}</div>
+                    <div><strong>Vorhergesagtes Thema:</strong> ${escapeHtml(response.predictedTheme || '–')}</div>
                     <div style="margin-top: 1rem;"><strong>Themenverteilung:</strong></div>
                     ${themeDistHtml}
                 `;
@@ -635,14 +667,14 @@
 
             if (elements.styleCompareResult) {
                 elements.styleCompareResult.innerHTML = `
-                    <div><strong>Ähnlichkeit:</strong> ${response.similarity}</div>
+                    <div><strong>Ähnlichkeit:</strong> ${escapeHtml(response.similarity)}</div>
                     <div style="margin-top: 1rem;">
-                        <strong>${response.artist1} Features:</strong>
-                        <pre style="margin-top: 0.5rem;">${JSON.stringify(response.featuresArtist1, null, 2)}</pre>
+                        <strong>${escapeHtml(response.artist1)} Features:</strong>
+                        <pre style="margin-top: 0.5rem;">${escapeHtml(JSON.stringify(response.featuresArtist1, null, 2))}</pre>
                     </div>
                     <div style="margin-top: 1rem;">
-                        <strong>${response.artist2} Features:</strong>
-                        <pre style="margin-top: 0.5rem;">${JSON.stringify(response.featuresArtist2, null, 2)}</pre>
+                        <strong>${escapeHtml(response.artist2)} Features:</strong>
+                        <pre style="margin-top: 0.5rem;">${escapeHtml(JSON.stringify(response.featuresArtist2, null, 2))}</pre>
                     </div>
                 `;
                 elements.styleCompareResult.classList.remove('hidden', 'result-box-error');
@@ -674,12 +706,12 @@
             }
 
             const similarHtml = Object.entries(response)
-                .map(([artist, similarity]) => `<div>${artist}: ${similarity}%</div>`)
+                .map(([name, similarity]) => `<div>${escapeHtml(name)}: ${(similarity * 100).toFixed(1)}%</div>`)
                 .join('');
 
             if (elements.similarResult) {
                 elements.similarResult.innerHTML = `
-                    <div><strong>Ähnlichste Künstler zu ${artist}:</strong></div>
+                    <div><strong>Ähnlichste Künstler zu ${escapeHtml(artist)}:</strong></div>
                     ${similarHtml}
                 `;
                 elements.similarResult.classList.remove('hidden', 'result-box-error');
@@ -724,8 +756,18 @@
         }
     }
 
+    /**
+     * Nutzt jetzt data-Attribute + addEventListener statt Inline-onmouseenter mit
+     * interpoliertem JSON.stringify(...).replace(/"/g, '&quot;'). Die alte Variante war
+     * fragil (bricht bei Künstlernamen mit Anführungszeichen/Sonderzeichen) und potenziell
+     * XSS-anfällig, da nicht-escapte Werte direkt ins HTML-Attribut interpoliert wurden.
+     * Die Punkt-Daten werden stattdessen in einer Map gehalten und per Index referenziert.
+     */
+    const dnaPointsById = new Map();
+
     function renderDNAVisualization(data) {
         if (!elements.dnaVisualization) return;
+        dnaPointsById.clear();
 
         elements.dnaVisualization.innerHTML = `
             <style>
@@ -769,35 +811,42 @@
                 }
             </style>
             <div class="dna-scatterplot" id="dna-scatterplot">
-                ${data.map(point => `
+                ${data.map((point, idx) => {
+            dnaPointsById.set(String(idx), point);
+            return `
                     <div class="dna-point"
+                         data-point-id="${idx}"
                          style="left: ${(point.x * 10 + 50)}%; top: ${(10 - point.y * 10 + 10)}%;
                                background: ${point.color === 'positive' ? 'var(--success-color)' : 'var(--error-color)'};
                                width: ${point.size}px; height: ${point.size}px;"
-                         title="${point.artist} (${point.topTheme})"
-                         onmouseenter="showDNATooltip(event, ${JSON.stringify(point).replace(/"/g, '&quot;')})"
-                         onmouseleave="hideDNATooltip()">
+                         title="${escapeHtml(point.artist)} (${escapeHtml(point.topTheme)})">
                     </div>
-                `).join('')}
+                `;
+        }).join('')}
                 <div class="dna-tooltip" id="dna-tooltip"></div>
             </div>
         `;
+
+        elements.dnaVisualization.querySelectorAll('.dna-point').forEach(el => {
+            el.addEventListener('mouseenter', (e) => showDNATooltip(e, dnaPointsById.get(el.dataset.pointId)));
+            el.addEventListener('mouseleave', hideDNATooltip);
+        });
     }
 
     function showDNATooltip(event, point) {
         const tooltip = document.getElementById('dna-tooltip');
-        if (!tooltip) return;
+        if (!tooltip || !point) return;
 
         const themeHtml = Object.entries(point.themes || {})
-            .map(([theme, percent]) => `<div>${theme}: ${percent}%</div>`)
+            .map(([theme, percent]) => `<div>${escapeHtml(theme)}: ${percent}%</div>`)
             .join('');
 
         tooltip.innerHTML = `
-            <div><strong>${point.artist}</strong></div>
-            <div>Top Thema: ${point.topTheme}</div>
+            <div><strong>${escapeHtml(point.artist)}</strong></div>
+            <div>Top Thema: ${escapeHtml(point.topTheme)}</div>
             <div>Themenverteilung:</div>
             ${themeHtml}
-            <div>Sentiment: ${point.averageSentiment ? point.averageSentiment.toFixed(2) : 'N/A'}</div>
+            <div>Sentiment: ${point.averageSentiment !== undefined && point.averageSentiment !== null ? point.averageSentiment.toFixed(2) : 'N/A'}</div>
         `;
         tooltip.style.display = 'block';
         tooltip.style.left = (event.pageX + 10) + 'px';
@@ -827,12 +876,12 @@
             }
 
             const themeHtml = Object.entries(response.themeDistribution || {})
-                .map(([theme, percent]) => `<div>${theme}: ${percent}%</div>`)
+                .map(([theme, percent]) => `<div>${escapeHtml(theme)}: ${percent}%</div>`)
                 .join('');
 
             if (elements.dnaDetailsResult) {
                 elements.dnaDetailsResult.innerHTML = `
-                    <div><strong>Künstler:</strong> ${response.artist}</div>
+                    <div><strong>Künstler:</strong> ${escapeHtml(response.artist)}</div>
                     <div><strong>Durchschnittliches Sentiment:</strong> ${response.averageSentiment.toFixed(3)}</div>
                     <div><strong>Feature-Vektor:</strong> [${response.featureVector.map(v => v.toFixed(3)).join(', ')}]</div>
                     <div style="margin-top: 1rem;"><strong>Themenverteilung:</strong></div>
@@ -861,7 +910,7 @@
         initThemes();
         initStyle();
         initDNA();
-        
+
         loadDashboard();
         loadTracks();
     }

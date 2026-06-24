@@ -2,6 +2,7 @@ package com.lyricsanalyzer.dto;
 
 import com.lyricsanalyzer.model.LyricsStatus;
 import com.lyricsanalyzer.model.SentimentLabel;
+import com.lyricsanalyzer.model.Theme;
 import com.lyricsanalyzer.model.Track;
 
 /**
@@ -18,7 +19,8 @@ public record TrackResponse(
         LyricsStatus lyricsStatus,
         boolean hasLyrics,
         SentimentLabel sentimentLabel,
-        Double sentimentScore
+        Double sentimentScore,
+        Theme theme
 ) {
     public static TrackResponse from(Track track) {
         return new TrackResponse(
@@ -31,7 +33,8 @@ public record TrackResponse(
                 track.getLyricsStatus(),
                 track.getLyrics() != null,
                 track.getSentimentLabel(),
-                track.getSentimentScore()
+                track.getSentimentScore(),
+                track.getTheme()
         );
     }
 }

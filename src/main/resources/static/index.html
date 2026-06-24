@@ -75,6 +75,21 @@
                 </div>
                 <div id="retry-result" class="result-box hidden"></div>
             </div>
+
+            <div class="card">
+                <h3>Metadaten nachladen (Genre/Jahr)</h3>
+                <p class="muted">
+                    Lädt Genre und Erscheinungsjahr für Tracks nach, die vor Einführung der
+                    Metadaten-Anreicherung angelegt wurden und daher noch keine vollständigen
+                    Angaben haben (siehe README).
+                </p>
+                <div class="form-row">
+                    <label for="metadata-limit">Limit</label>
+                    <input type="number" id="metadata-limit" value="50" min="1" max="500">
+                    <button class="btn btn-secondary" id="btn-backfill-metadata">Metadaten nachladen</button>
+                </div>
+                <div id="backfill-result" class="result-box hidden"></div>
+            </div>
         </section>
 
         <!-- INGESTION -->

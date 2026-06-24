@@ -2,12 +2,17 @@ package com.lyricsanalyzer.dto;
 
 import com.lyricsanalyzer.model.LyricsStatus;
 import com.lyricsanalyzer.model.SentimentLabel;
+import com.lyricsanalyzer.model.Theme;
 import com.lyricsanalyzer.model.Track;
 
 /**
  * Detailansicht eines einzelnen Tracks inklusive vollständigem Lyrics-Text.
  * Wird bewusst nicht in Listen-Endpunkten verwendet (Performance + Datenschutz/Urheberrecht:
  * Lyrics sollten nicht in Massen-Listings exponiert werden).
+ *
+ * Enthält zusätzlich {@code theme}, da die GUI (Track-Detail-Modal) dieses Feld anzeigt
+ * (siehe app.js: showTrackDetails -> track.theme). Vorher fehlte das Feld hier, obwohl
+ * Track.getTheme() existierte - das Modal zeigte daher nie ein Thema an.
  */
 public record TrackDetailResponse(
         Long id,
@@ -19,7 +24,8 @@ public record TrackDetailResponse(
         LyricsStatus lyricsStatus,
         String lyrics,
         SentimentLabel sentimentLabel,
-        Double sentimentScore
+        Double sentimentScore,
+        Theme theme
 ) {
     public static TrackDetailResponse from(Track track) {
         return new TrackDetailResponse(
@@ -32,7 +38,8 @@ public record TrackDetailResponse(
                 track.getLyricsStatus(),
                 track.getLyrics(),
                 track.getSentimentLabel(),
-                track.getSentimentScore()
+                track.getSentimentScore(),
+                track.getTheme()
         );
     }
 }

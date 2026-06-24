@@ -14,6 +14,9 @@ public class Track {
     @Column(name = "deezer_id", unique = true)
     private Long deezerId;
 
+    @Column(name = "deezer_album_id")
+    private Long deezerAlbumId;
+
     @Column(name = "artist_name", nullable = false)
     private String artistName;
 
@@ -81,6 +84,14 @@ public class Track {
 
     public void setDeezerId(Long deezerId) {
         this.deezerId = deezerId;
+    }
+
+    public Long getDeezerAlbumId() {
+        return deezerAlbumId;
+    }
+
+    public void setDeezerAlbumId(Long deezerAlbumId) {
+        this.deezerAlbumId = deezerAlbumId;
     }
 
     public String getArtistName() {

@@ -52,6 +52,10 @@
         retryLimit: document.getElementById('retry-limit'),
         btnRetryErrors: document.getElementById('btn-retry-errors'),
         retryResult: document.getElementById('retry-result'),
+
+        backfillLimit: document.getElementById('backfill-limit'),
+        btnBackfillMetadata: document.getElementById('btn-backfill-metadata'),
+        backfillResult: document.getElementById('backfill-result'),
         
         trackSearch: document.getElementById('track-search'),
         trackStatusFilter: document.getElementById('track-status-filter'),
@@ -217,8 +221,8 @@
         showLoading(elements.sentimentResult, true);
         try {
             const result = await api.analyzePendingSentiment(limit);
-            showResult(elements.sentimentResult, `Analyse für ${result.analyzed || limit} Tracks gestartet`, false);
-            showToast('Sentiment-Analyse läuft im Hintergrund');
+            showResult(elements.sentimentResult, `Analyse für ${result.analyzedCount ?? limit} Tracks abgeschlossen`, false);
+            showToast('Sentiment-Analyse abgeschlossen');
             loadDashboard();
             loadTracks();
             loadStats();
@@ -240,14 +244,39 @@
         showLoading(elements.retryResult, true);
         try {
             const result = await api.retryErrorTracks(limit);
-            showResult(elements.retryResult, `Erneuter Versuch für ${result.retryCount || limit} Tracks`, false);
-            showToast('Erneuter Ladeversuch läuft');
+            const msg = `Versucht: ${result.attempted}, Neu gefunden: ${result.newlyFetched}, Weiterhin nicht gefunden: ${result.notFound}, Weiterhin Fehler: ${result.stillError}`;
+            showResult(elements.retryResult, msg, false);
+            showToast('Erneuter Ladeversuch abgeschlossen');
             loadDashboard();
             loadTracks();
         } catch (error) {
             showResult(elements.retryResult, `Fehler: ${error.message}`, true);
         } finally {
             showLoading(elements.retryResult, false);
+        }
+    }
+
+    // ==================== METADATA BACKFILL (Genre/Jahr) ====================
+
+    function initBackfillMetadata() {
+        if (!elements.btnBackfillMetadata) return;
+        elements.btnBackfillMetadata.addEventListener('click', handleBackfillMetadata);
+    }
+
+    async function handleBackfillMetadata() {
+        const limit = parseInt(elements.backfillLimit.value) || 50;
+        showLoading(elements.backfillResult, true);
+        try {
+            const result = await api.backfillMetadata(limit);
+            const msg = `Geprüft: ${result.attempted}, Aktualisiert: ${result.updated}, Übersprungen: ${result.skipped}`;
+            showResult(elements.backfillResult, msg, false);
+            showToast('Genre-/Jahr-Nachladen abgeschlossen');
+            loadTracks();
+            loadStats();
+        } catch (error) {
+            showResult(elements.backfillResult, `Fehler: ${error.message}`, true);
+        } finally {
+            showLoading(elements.backfillResult, false);
         }
     }
 
@@ -307,11 +336,11 @@
             .map(track => `
                 <tr data-track-id="${track.id}">
                     <td>${track.id}</td>
-                    <td>${escapeHtml(track.artist || '–')}</td>
+                    <td>${escapeHtml(track.artistName || '–')}</td>
                     <td>${escapeHtml(track.title || '–')}</td>
-                    <td>${escapeHtml(track.album || '–')}</td>
-                    <td><span class="status-badge status-${track.lyricsStatus || 'PENDING'}">${track.lyricsStatus || 'PENDING'}</span></td>
-                    <td>${formatSentimentLabel(track.sentimentScore)}</td>
+                    <td>${escapeHtml(track.albumName || '–')}</td>
+                    <td><span class="status-badge ${track.lyricsStatus || 'PENDING'}">${track.lyricsStatus || 'PENDING'}</span></td>
+                    <td>${escapeHtml(track.sentimentLabel || 'Kein Sentiment')}</td>
                     <td>${formatSentiment(track.sentimentScore)}</td>
                     <td><button class="btn btn-small btn-details" data-track-id="${track.id}">Details</button></td>
                 </tr>
@@ -333,13 +362,13 @@
             const track = await api.getTrackById(trackId);
             const html = `
                 <div class="modal-header">
-                    <h2>${escapeHtml(track.artist || 'Unbekannt')} – ${escapeHtml(track.title || 'Unbekannt')}</h2>
+                    <h2>${escapeHtml(track.artistName || 'Unbekannt')} – ${escapeHtml(track.title || 'Unbekannt')}</h2>
                 </div>
                 <div class="modal-body">
                     <div class="detail-grid">
-                        <div class="detail-item"><strong>Album:</strong> ${escapeHtml(track.album || '–')}</div>
-                        <div class="detail-item"><strong>Lyrics-Status:</strong> <span class="status-badge status-${track.lyricsStatus || 'PENDING'}">${track.lyricsStatus || 'PENDING'}</span></div>
-                        <div class="detail-item"><strong>Sentiment:</strong> ${formatSentimentLabel(track.sentimentScore)} (${formatSentiment(track.sentimentScore)})</div>
+                        <div class="detail-item"><strong>Album:</strong> ${escapeHtml(track.albumName || '–')}</div>
+                        <div class="detail-item"><strong>Lyrics-Status:</strong> <span class="status-badge ${track.lyricsStatus || 'PENDING'}">${track.lyricsStatus || 'PENDING'}</span></div>
+                        <div class="detail-item"><strong>Sentiment:</strong> ${escapeHtml(track.sentimentLabel || 'Kein Sentiment')} (${formatSentiment(track.sentimentScore)})</div>
                         <div class="detail-item"><strong>Genre:</strong> ${escapeHtml(track.genre || '–')}</div>
                         <div class="detail-item"><strong>Jahr:</strong> ${escapeHtml(track.releaseYear || '–')}</div>
                     </div>
@@ -375,14 +404,18 @@
 
     function renderGenreStats(stats) {
         if (!stats || stats.length === 0) {
-            elements.statsGenre.innerHTML = '<p class="muted">Keine Genre-Daten verfügbar. Hinweis: Genre muss von Deezer geladen werden (siehe README).</p>';
+            elements.statsGenre.innerHTML = '<p class="muted">Noch keine Genre-Daten verfügbar. Nutze "Songs laden" (neue Songs) oder "Genre/Jahr nachladen" (vorhandene Songs), um Genre-Daten von Deezer zu ergänzen.</p>';
             return;
         }
+        const maxScore = Math.max(...stats.map(s => s.averageSentimentScore || 0), 0.0001);
         elements.statsGenre.innerHTML = stats
             .map(s => `
-                <div class="stat-item">
-                    <span class="stat-genre">${escapeHtml(s.genre || 'Unbekannt')}</span>
-                    <span class="stat-value">${formatSentiment(s.averageSentiment)}</span>
+                <div class="stats-row">
+                    <span class="stats-row-label">${escapeHtml(s.genre || 'Unbekannt')}</span>
+                    <div class="stats-bar-track">
+                        <div class="stats-bar-fill" style="width: ${Math.max(0, (s.averageSentimentScore || 0) / maxScore * 100)}%"></div>
+                    </div>
+                    <span class="stats-row-value">${formatSentiment(s.averageSentimentScore)} (${s.trackCount} Songs)</span>
                 </div>
             `)
             .join('');
@@ -390,15 +423,19 @@
 
     function renderYearStats(stats) {
         if (!stats || stats.length === 0) {
-            elements.statsYear.innerHTML = '<p class="muted">Keine Jahr-Daten verfügbar. Hinweis: Jahr muss von Deezer geladen werden (siehe README).</p>';
+            elements.statsYear.innerHTML = '<p class="muted">Noch keine Jahr-Daten verfügbar. Nutze "Songs laden" (neue Songs) oder "Genre/Jahr nachladen" (vorhandene Songs), um Erscheinungsjahre von Deezer zu ergänzen.</p>';
             return;
         }
         const sorted = [...stats].sort((a, b) => (b.year || 0) - (a.year || 0));
+        const maxScore = Math.max(...sorted.map(s => s.averageSentimentScore || 0), 0.0001);
         elements.statsYear.innerHTML = sorted
             .map(s => `
-                <div class="stat-item">
-                    <span class="stat-year">${s.year || 'Unbekannt'}</span>
-                    <span class="stat-value">${formatSentiment(s.averageSentiment)}</span>
+                <div class="stats-row">
+                    <span class="stats-row-label">${s.year || 'Unbekannt'}</span>
+                    <div class="stats-bar-track">
+                        <div class="stats-bar-fill" style="width: ${Math.max(0, (s.averageSentimentScore || 0) / maxScore * 100)}%"></div>
+                    </div>
+                    <span class="stats-row-value">${formatSentiment(s.averageSentimentScore)} (${s.trackCount} Songs)</span>
                 </div>
             `)
             .join('');
@@ -429,6 +466,7 @@
         initIngestion();
         initSentiment();
         initRetryErrors();
+        initBackfillMetadata();
         initTracks();
         initModal();
         loadDashboard();

@@ -25,6 +25,21 @@ public interface TrackRepository extends JpaRepository<Track, Long> {
     long countByLyricsStatus(LyricsStatus status);
 
     /**
+     * Tracks, für die ein nachträglicher Metadaten-Abruf (Genre/Erscheinungsjahr) über die
+     * Deezer Album-API möglich und noch nicht erfolgt ist: eine Album-ID ist bekannt
+     * (deezer_album_id IS NOT NULL), aber Genre oder Jahr fehlen noch.
+     * Wird vom Backfill-Endpunkt genutzt, um bereits vor der Metadaten-Anreicherung
+     * angelegte Tracks nachträglich zu vervollständigen.
+     */
+    @Query(value = """
+           SELECT t.* FROM track t
+           WHERE t.deezer_album_id IS NOT NULL
+           AND (t.genre IS NULL OR t.release_year IS NULL)
+           ORDER BY t.id ASC
+           """, nativeQuery = true)
+    List<Track> findPendingMetadataBackfill(Pageable pageable);
+
+    /**
      * Flexible Such-/Filter-Query für die GUI-Track-Liste.
      * {@code status} und {@code search} sind optional (NULL = Filter nicht angewendet) -
      * dadurch deckt eine einzige Query alle Kombinationen ab (kein Filter / nur Status /

@@ -1,5 +1,6 @@
 package com.lyricsanalyzer.service;
 
+import com.lyricsanalyzer.client.DeezerAlbumMetadata;
 import com.lyricsanalyzer.client.DeezerClient;
 import com.lyricsanalyzer.client.LyricsFetchResult;
 import com.lyricsanalyzer.client.LyricsOvhClient;
@@ -23,6 +24,8 @@ import java.util.List;
  * 2. Pro Song prüfen, ob er (inkl. Lyrics) schon in der DB liegt
  * 3. Falls nicht: Lyrics von lyrics.ovh abrufen und DAUERHAFT speichern
  * 4. Songs, die bereits einen Lyrics-Status haben, werden NICHT erneut abgefragt
+ * 5. Für neu angelegte Tracks: Genre + Erscheinungsjahr über die Deezer Album-API
+ *    nachladen, da die einfache Such-API diese Felder nicht mitliefert (siehe README)
  */
 @Service
 public class LyricsIngestionService {
@@ -71,7 +74,14 @@ public class LyricsIngestionService {
                 continue;
             }
 
-            Track track = findOrCreateTrack(deezerTrack, artist, title);
+            FindOrCreateResult findOrCreateResult = findOrCreateTrack(deezerTrack, artist, title);
+            Track track = findOrCreateResult.track();
+
+            // Neu angelegte Tracks direkt um Genre/Jahr anreichern (zusätzlicher Call zur
+            // Deezer Album-API, da die einfache Suche diese Felder nicht liefert).
+            if (findOrCreateResult.isNewlyCreated()) {
+                enrichWithAlbumMetadata(track);
+            }
 
             // Zentrale Caching-Logik: nur abrufen, wenn noch nicht versucht (PENDING)
             if (track.getLyricsStatus() != LyricsStatus.PENDING) {
@@ -99,17 +109,44 @@ public class LyricsIngestionService {
         return summary;
     }
 
-    private Track findOrCreateTrack(DeezerSearchResponse.DeezerTrack deezerTrack,
+    private record FindOrCreateResult(Track track, boolean isNewlyCreated) {
+    }
+
+    private FindOrCreateResult findOrCreateTrack(DeezerSearchResponse.DeezerTrack deezerTrack,
                                     String artist, String title) {
-        return trackRepository.findByArtistNameIgnoreCaseAndTitleIgnoreCase(artist, title)
-                .orElseGet(() -> {
-                    Track newTrack = new Track(artist, title);
-                    newTrack.setDeezerId(deezerTrack.getId());
-                    if (deezerTrack.getAlbum() != null) {
-                        newTrack.setAlbumName(deezerTrack.getAlbum().getTitle());
-                    }
-                    return trackRepository.save(newTrack);
-                });
+        var existing = trackRepository.findByArtistNameIgnoreCaseAndTitleIgnoreCase(artist, title);
+        if (existing.isPresent()) {
+            return new FindOrCreateResult(existing.get(), false);
+        }
+
+        Track newTrack = new Track(artist, title);
+        newTrack.setDeezerId(deezerTrack.getId());
+        if (deezerTrack.getAlbum() != null) {
+            newTrack.setAlbumName(deezerTrack.getAlbum().getTitle());
+            newTrack.setDeezerAlbumId(deezerTrack.getAlbum().getId());
+        }
+        Track saved = trackRepository.save(newTrack);
+        return new FindOrCreateResult(saved, true);
+    }
+
+    /**
+     * Lädt Genre + Erscheinungsjahr für einen Track über die Deezer Album-API nach und
+     * speichert sie direkt am Track. Schlägt der Abruf fehl, bleibt der Track einfach ohne
+     * diese Metadaten (siehe DeezerClient.fetchAlbumMetadata) - die Lyrics-Ingestion läuft
+     * unabhängig davon weiter.
+     */
+    private void enrichWithAlbumMetadata(Track track) {
+        if (track.getDeezerAlbumId() == null) {
+            return;
+        }
+        DeezerAlbumMetadata metadata = deezerClient.fetchAlbumMetadata(track.getDeezerAlbumId());
+        if (metadata.genre() != null) {
+            track.setGenre(metadata.genre());
+        }
+        if (metadata.releaseYear() != null) {
+            track.setReleaseYear(metadata.releaseYear());
+        }
+        trackRepository.save(track);
     }
 
     private void applyFetchResult(Track track, LyricsFetchResult result) {
@@ -174,6 +211,51 @@ public class LyricsIngestionService {
 
         RetrySummary summary = new RetrySummary(errorTracks.size(), newlyFetched, notFound, stillError);
         log.info("Retry für ERROR-Tracks abgeschlossen: {}", summary);
+        return summary;
+    }
+
+    public record MetadataBackfillSummary(int attempted, int updated, int skipped) {
+    }
+
+    /**
+     * Lädt für bereits vorhandene Tracks (Altdaten, die vor Einführung der Metadaten-
+     * Anreicherung angelegt wurden) Genre + Erscheinungsjahr nachträglich über die Deezer
+     * Album-API nach. Betrifft nur Tracks mit bekannter deezer_album_id, bei denen Genre
+     * oder Jahr noch fehlen (siehe TrackRepository.findPendingMetadataBackfill).
+     *
+     * @param limit maximale Anzahl an Tracks pro Lauf (um die Deezer-API nicht zu überlasten)
+     */
+    public MetadataBackfillSummary backfillMetadata(int limit) {
+        List<Track> pending = trackRepository.findPendingMetadataBackfill(PageRequest.of(0, limit));
+
+        int updated = 0;
+        int skipped = 0;
+
+        for (Track track : pending) {
+            DeezerAlbumMetadata metadata = deezerClient.fetchAlbumMetadata(track.getDeezerAlbumId());
+
+            boolean changed = false;
+            if (metadata.genre() != null && track.getGenre() == null) {
+                track.setGenre(metadata.genre());
+                changed = true;
+            }
+            if (metadata.releaseYear() != null && track.getReleaseYear() == null) {
+                track.setReleaseYear(metadata.releaseYear());
+                changed = true;
+            }
+
+            if (changed) {
+                trackRepository.save(track);
+                updated++;
+            } else {
+                skipped++;
+            }
+
+            sleepBetweenRequests();
+        }
+
+        MetadataBackfillSummary summary = new MetadataBackfillSummary(pending.size(), updated, skipped);
+        log.info("Metadaten-Backfill abgeschlossen: {}", summary);
         return summary;
     }
 }

@@ -42,6 +42,12 @@
         });
     }
 
+    async function backfillMetadata(limit = 50) {
+        return apiRequest(`${API_BASE}/ingestion/backfill-metadata?limit=${limit}`, {
+            method: 'POST',
+        });
+    }
+
     async function getTracks(page = 0, size = 20, search = '', status = '') {
         let url = `${API_BASE}/tracks?page=${page}&size=${size}`;
         if (search) url += `&search=${encodeURIComponent(search)}`;
@@ -75,6 +81,7 @@
         searchAndIngestTracks,
         analyzePendingSentiment,
         retryErrorTracks,
+        backfillMetadata,
         getTracks,
         getTrackById,
         getStatsByGenre,

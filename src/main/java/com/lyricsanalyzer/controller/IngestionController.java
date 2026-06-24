@@ -45,4 +45,17 @@ public class IngestionController {
 
         return ResponseEntity.ok(ingestionService.retryErrorTracks(limit));
     }
+
+    /**
+     * Lädt Genre + Erscheinungsjahr für bereits vorhandene Tracks nach, die vor Einführung
+     * der Metadaten-Anreicherung angelegt wurden (und daher noch keine bzw. unvollständige
+     * Genre-/Jahr-Daten haben). Macht die Statistik-Auswertungen "Sentiment pro Genre/Jahr"
+     * auch für Altdaten aussagekräftig (siehe README).
+     */
+    @PostMapping("/backfill-metadata")
+    public ResponseEntity<LyricsIngestionService.MetadataBackfillSummary> backfillMetadata(
+            @RequestParam(defaultValue = "50") int limit) {
+
+        return ResponseEntity.ok(ingestionService.backfillMetadata(limit));
+    }
 }

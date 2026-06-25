@@ -23,14 +23,14 @@ public class Track {
     @Column(name = "title", nullable = false, columnDefinition = "VARCHAR(500)")
     private String title;
 
-    @Column(name = "album_name")
+    @Column(name = "album_name", columnDefinition = "VARCHAR(500)")
     private String albumName;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "theme")
+    @Column(name = "theme", columnDefinition = "VARCHAR(20)")
     private Theme theme;
 
-    @Column(name = "genre")
+    @Column(name = "genre", columnDefinition = "VARCHAR(255)")
     private String genre;
 
     @Column(name = "release_year")
@@ -40,14 +40,14 @@ public class Track {
     private String lyrics;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "lyrics_status", nullable = false)
+    @Column(name = "lyrics_status", nullable = false, columnDefinition = "VARCHAR(20)")
     private LyricsStatus lyricsStatus = LyricsStatus.PENDING;
 
     @Column(name = "lyrics_fetched_at")
     private LocalDateTime lyricsFetchedAt;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "sentiment_label")
+    @Column(name = "sentiment_label", columnDefinition = "VARCHAR(20)")
     private SentimentLabel sentimentLabel;
 
     @Column(name = "sentiment_score")

@@ -170,7 +170,7 @@ public class LyricsIngestionService {
      */
     public List<Track> findTracksPendingSentimentAnalysis(int limit) {
         return new ArrayList<>(trackRepository.findByLyricsStatusAndSentimentLabelIsNull(
-                LyricsStatus.FOUND,
+                LyricsStatus.FOUND.name(),
                 PageRequest.of(0, limit)));
     }
 
@@ -187,7 +187,7 @@ public class LyricsIngestionService {
      */
     public RetrySummary retryErrorTracks(int limit) {
         List<Track> errorTracks = trackRepository.findByLyricsStatus(
-                LyricsStatus.ERROR, PageRequest.of(0, limit));
+                LyricsStatus.ERROR.name(), PageRequest.of(0, limit));
 
         int newlyFetched = 0;
         int notFound = 0;

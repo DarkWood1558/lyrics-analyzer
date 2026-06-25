@@ -399,10 +399,25 @@
      * was immer undefined war - die Tabelle zeigte daher in Künstler- und Album-Spalte
      * nur "–" an, unabhängig von den tatsächlichen Daten.
      */
+    // Available themes for the dropdown
+    const THEMES = ['LOVE', 'PARTY', 'SADNESS', 'PROTEST', 'ADVENTURE', 'REFLECTIVE', 'ANGER', 'CELEBRATION', 'LONELINESS', 'HOPE', 'NOSTALGIA', 'FRIENDSHIP', 'NATURE', 'SPIRITUAL'];
+
+    function renderThemeDropdown(trackId, currentTheme) {
+        const options = THEMES.map(theme => 
+            `<option value="${theme}" ${currentTheme === theme ? 'selected' : ''}>${theme}</option>`
+        ).join('');
+        return `
+            <select class="theme-select" data-track-id="${trackId}">
+                <option value="">-- kein Theme --</option>
+                ${options}
+            </select>
+        `;
+    }
+
     function renderTracksTable() {
         if (!elements.tracksTbody) return;
         if (state.tracks.data.length === 0) {
-            elements.tracksTbody.innerHTML = '<tr><td colspan="8" class="muted">Keine Tracks gefunden</td></tr>';
+            elements.tracksTbody.innerHTML = '<tr><td colspan="9" class="muted">Keine Tracks gefunden</td></tr>';
             return;
         }
         elements.tracksTbody.innerHTML = state.tracks.data
@@ -412,6 +427,7 @@
                     <td>${escapeHtml(track.artistName)}</td>
                     <td>${escapeHtml(track.title)}</td>
                     <td>${escapeHtml(track.albumName)}</td>
+                    <td>${renderThemeDropdown(track.id, track.theme)}</td>
                     <td><span class="status-badge status-${track.lyricsStatus || 'PENDING'}">${track.lyricsStatus || 'PENDING'}</span></td>
                     <td>${formatSentimentLabel(track.sentimentLabel)}</td>
                     <td>${formatSentiment(track.sentimentScore)}</td>
@@ -419,6 +435,16 @@
                 </tr>
             `)
             .join('');
+        
+        // Add event listeners for theme dropdowns
+        elements.tracksTbody.querySelectorAll('.theme-select').forEach(select => {
+            select.addEventListener('change', async (e) => {
+                const trackId = parseInt(e.target.dataset.trackId);
+                const theme = e.target.value;
+                await api.saveTrackTheme(trackId, theme);
+            });
+        });
+        
         elements.tracksTbody.querySelectorAll('.btn-details').forEach(btn => {
             btn.addEventListener('click', () => showTrackDetails(parseInt(btn.dataset.trackId)));
         });

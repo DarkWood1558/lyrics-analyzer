@@ -18,11 +18,24 @@ public interface TrackRepository extends JpaRepository<Track, Long> {
 
     Optional<Track> findByDeezerId(Long deezerId);
 
-    List<Track> findByLyricsStatus(LyricsStatus status, Pageable pageable);
+    @Query(nativeQuery = true, value = """
+           SELECT * FROM track 
+           WHERE lyrics_status = :status
+           """)
+    List<Track> findByLyricsStatus(@Param("status") String status, Pageable pageable);
 
-    List<Track> findByLyricsStatusAndSentimentLabelIsNull(LyricsStatus status, Pageable pageable);
+    @Query(nativeQuery = true, value = """
+           SELECT * FROM track 
+           WHERE lyrics_status = :status 
+           AND sentiment_label IS NULL
+           """)
+    List<Track> findByLyricsStatusAndSentimentLabelIsNull(@Param("status") String status, Pageable pageable);
 
-    long countByLyricsStatus(LyricsStatus status);
+    @Query(nativeQuery = true, value = """
+           SELECT COUNT(*) FROM track 
+           WHERE lyrics_status = :status
+           """)
+    long countByLyricsStatus(@Param("status") String status);
 
     @Query(value = "SELECT t.* FROM track t WHERE LOWER(CAST(t.artist_name AS TEXT)) = LOWER(CAST(:artistName AS TEXT))", nativeQuery = true)
     List<Track> findByArtistNameIgnoreCase(@Param("artistName") String artistName);
@@ -37,7 +50,7 @@ public interface TrackRepository extends JpaRepository<Track, Long> {
     @Query(value = """
            SELECT t.* FROM track t
            WHERE t.deezer_album_id IS NOT NULL
-           AND (t.genre IS NULL OR t.release_year IS NULL)
+           AND (CAST(t.genre AS TEXT) IS NULL OR t.release_year IS NULL)
            ORDER BY t.id ASC
            """, nativeQuery = true)
     List<Track> findPendingMetadataBackfill(Pageable pageable);
@@ -50,43 +63,43 @@ public interface TrackRepository extends JpaRepository<Track, Long> {
      */
     @Query(nativeQuery = true, value = """
            SELECT * FROM track
-           WHERE (COALESCE(:status, '') = '' OR lyrics_status = CAST(:status AS VARCHAR(20)))
-           AND (COALESCE(:search, '') = '' OR
+           WHERE (:status IS NULL OR lyrics_status = :status)
+           AND (:search IS NULL OR
                 artist_name ILIKE ('%' || :search || '%') OR
                 title ILIKE ('%' || :search || '%'))
            ORDER BY id DESC
            """)
-    Page<Track> customSearchTracks(@Param("status") LyricsStatus status,
+    Page<Track> customSearchTracks(@Param("status") String status,
                                   @Param("search") String search,
                                   Pageable pageable);
 
-    @Query("""
-           SELECT t.genre AS genre, AVG(t.sentimentScore) AS avgScore, COUNT(t) AS trackCount
-           FROM Track t
-           WHERE t.sentimentScore IS NOT NULL AND t.genre IS NOT NULL
-           GROUP BY t.genre
-           ORDER BY avgScore DESC
+    @Query(nativeQuery = true, value = """
+           SELECT genre AS genre, AVG(sentiment_score) AS avg_score, COUNT(*) AS track_count
+           FROM track
+           WHERE sentiment_score IS NOT NULL AND CAST(genre AS TEXT) IS NOT NULL
+           GROUP BY genre
+           ORDER BY avg_score DESC
            """)
     List<GenreSentimentRow> findAverageSentimentByGenre();
 
-    @Query("""
-           SELECT t.releaseYear AS year, AVG(t.sentimentScore) AS avgScore, COUNT(t) AS trackCount
-           FROM Track t
-           WHERE t.sentimentScore IS NOT NULL AND t.releaseYear IS NOT NULL
-           GROUP BY t.releaseYear
-           ORDER BY t.releaseYear ASC
+    @Query(nativeQuery = true, value = """
+           SELECT release_year AS year, AVG(sentiment_score) AS avg_score, COUNT(*) AS track_count
+           FROM track
+           WHERE sentiment_score IS NOT NULL AND release_year IS NOT NULL
+           GROUP BY release_year
+           ORDER BY release_year ASC
            """)
     List<YearSentimentRow> findAverageSentimentByYear();
 
     interface GenreSentimentRow {
         String getGenre();
-        Double getAvgScore();
-        Long getTrackCount();
+        Double getAvg_score();
+        Long getTrack_count();
     }
 
     interface YearSentimentRow {
         Integer getYear();
-        Double getAvgScore();
-        Long getTrackCount();
+        Double getAvg_score();
+        Long getTrack_count();
     }
 }

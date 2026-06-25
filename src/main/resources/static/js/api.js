@@ -135,6 +135,14 @@
         return apiRequest(`${API_BASE}/analysis/themes`);
     }
 
+    async function saveTrackTheme(trackId, theme) {
+        return apiRequest(`${API_BASE}/tracks/${trackId}/theme`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ theme }),
+        });
+    }
+
     window.LyricsAnalyzerAPI = {
         searchAndIngestTracks,
         analyzePendingSentiment,
@@ -160,5 +168,6 @@
         getArtistDNA,
         getSimilarArtistsDNA,
         getAllThemes,
+        saveTrackTheme,
     };
 })();

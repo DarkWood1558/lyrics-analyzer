@@ -12,6 +12,14 @@ import java.util.stream.Collectors;
 
 /**
  * Service für die Generierung und Analyse von Lyrics-DNA (Feature-Vektoren für Künstler).
+ *
+ * Dies ist die EINZIGE Quelle der Wahrheit für "Lyrics DNA" (Feature-Vektor +
+ * Themenverteilung + Sentiment). Vorher existierte eine zweite, leicht abweichende
+ * DNA-Berechnung in {@link ArtistStyleAnalysisService} (ohne Themenverteilung), die u.a.
+ * vom {@code /dna/similar}-Endpunkt genutzt wurde - mit dem Ergebnis, dass {@code /dna/all}
+ * und {@code /dna/similar} unterschiedliche Daten für dieselben Künstler lieferten.
+ * {@link ArtistStyleAnalysisService} liefert jetzt nur noch reine Stil-Features und die
+ * Cosine-Similarity-Utility-Funktion, die hier verwendet wird.
  */
 @Service
 public class LyricsDNAService {
@@ -21,8 +29,8 @@ public class LyricsDNAService {
     private final ArtistStyleAnalysisService artistStyleAnalysisService;
 
     public LyricsDNAService(TrackRepository trackRepository,
-                           ThemeClassificationService themeClassificationService,
-                           ArtistStyleAnalysisService artistStyleAnalysisService) {
+                            ThemeClassificationService themeClassificationService,
+                            ArtistStyleAnalysisService artistStyleAnalysisService) {
         this.trackRepository = trackRepository;
         this.themeClassificationService = themeClassificationService;
         this.artistStyleAnalysisService = artistStyleAnalysisService;
@@ -40,15 +48,9 @@ public class LyricsDNAService {
 
         return tracksByArtist.entrySet().stream()
                 .map(entry -> {
-                    String artistName = entry.getKey();
-                    // Capitalize first letter of each word
-                    artistName = Arrays.stream(artistName.split(" "))
-                            .map(word -> word.substring(0, 1).toUpperCase() + word.substring(1).toLowerCase())
-                            .collect(Collectors.joining(" "));
-                    
+                    String artistName = capitalize(entry.getKey());
                     List<Track> artistTracks = entry.getValue();
-                    
-                    // Aggregierte Features berechnen
+
                     double[] featureVector = calculateFeatureVector(artistTracks);
                     double avgSentiment = calculateAvgSentiment(artistTracks);
                     Map<Theme, Integer> themeDistribution = calculateThemeDistribution(artistTracks);
@@ -56,6 +58,12 @@ public class LyricsDNAService {
                     return new LyricsDNA(artistName, featureVector, themeDistribution, avgSentiment);
                 })
                 .toList();
+    }
+
+    private String capitalize(String lowerCaseArtistName) {
+        return Arrays.stream(lowerCaseArtistName.split(" "))
+                .map(word -> word.isEmpty() ? word : word.substring(0, 1).toUpperCase() + word.substring(1).toLowerCase())
+                .collect(Collectors.joining(" "));
     }
 
     /**
@@ -140,7 +148,7 @@ public class LyricsDNAService {
      */
     public LyricsDNA generateDNA(String artistName) {
         List<Track> tracks = trackRepository.findByArtistNameIgnoreCase(artistName);
-        
+
         if (tracks.isEmpty()) {
             return null;
         }
@@ -162,19 +170,19 @@ public class LyricsDNAService {
                 .map(dna -> {
                     Map<String, Object> result = new LinkedHashMap<>();
                     result.put("artist", dna.artistName());
-                    
+
                     // Skalierte Koordinaten für Visualisierung
                     // x = avgWordLength (skaliert 0-10)
                     // y = rhymeDensity (skaliert 0-10)
                     result.put("x", dna.featureVector()[0] * 10);
                     result.put("y", dna.featureVector()[1] * 10);
-                    
+
                     // Blasengröße basierend auf Sentiment
                     result.put("size", Math.abs(dna.averageSentiment()) * 10 + 5);
-                    
+
                     // Farbe basierend auf Sentiment
                     result.put("color", dna.averageSentiment() >= 0 ? "positive" : "negative");
-                    
+
                     // Themenverteilung
                     result.put("themes", dna.themeDistribution());
 
@@ -186,7 +194,7 @@ public class LyricsDNAService {
                             .orElse("UNKNOWN"));
 
                     result.put("averageSentiment", dna.averageSentiment());
-                    
+
                     return result;
                 })
                 .toList();
@@ -194,9 +202,38 @@ public class LyricsDNAService {
 
     /**
      * Findet die ähnlichsten Künstler basierend auf DNA.
+     * Nutzt jetzt dieselbe DNA-Quelle ({@link #generateAllDNAWithThemes()}) wie
+     * {@code /dna/all} und {@code /dna/visualization} - vorher delegierte diese Methode
+     * an ArtistStyleAnalysisService und nutzte dadurch eine andere (themen-lose)
+     * DNA-Berechnung als der Rest der DNA-Endpunkte.
      */
     public Map<String, Double> findSimilarArtists(String artistName, int limit) {
-        return artistStyleAnalysisService.findSimilarArtists(artistName, limit);
+        List<LyricsDNA> allDNA = generateAllDNAWithThemes();
+
+        LyricsDNA targetDNA = allDNA.stream()
+                .filter(d -> d.artistName().equalsIgnoreCase(artistName))
+                .findFirst()
+                .orElse(null);
+
+        if (targetDNA == null) {
+            return Map.of();
+        }
+
+        return allDNA.stream()
+                .filter(d -> !d.artistName().equalsIgnoreCase(artistName))
+                .collect(Collectors.toMap(
+                        LyricsDNA::artistName,
+                        dna -> artistStyleAnalysisService.calculateSimilarity(targetDNA, dna)
+                ))
+                .entrySet().stream()
+                .sorted((a, b) -> b.getValue().compareTo(a.getValue()))
+                .limit(limit)
+                .collect(Collectors.toMap(
+                        Map.Entry::getKey,
+                        Map.Entry::getValue,
+                        (a, b) -> a,
+                        LinkedHashMap::new
+                ));
     }
 
     /**
@@ -205,11 +242,11 @@ public class LyricsDNAService {
     public double calculateSimilarity(String artist1, String artist2) {
         LyricsDNA dna1 = generateDNA(artist1);
         LyricsDNA dna2 = generateDNA(artist2);
-        
+
         if (dna1 == null || dna2 == null) {
             return 0.0;
         }
-        
+
         return artistStyleAnalysisService.calculateSimilarity(dna1, dna2);
     }
 

@@ -14,6 +14,13 @@ import java.util.Map;
 
 /**
  * REST-Controller für KI-basierte Analysen.
+ *
+ * Hinweis zu /artist/compare und /artist/similar: Diese delegieren inhaltlich an dieselbe
+ * DNA-Berechnung wie /dna/{artistName} und /dna/similar (siehe LyricsDNAService - jetzt die
+ * einzige Quelle der Wahrheit für Lyrics-DNA). Sie bleiben als eigene Endpunkte erhalten,
+ * da das bestehende Frontend (js/api.js: compareArtists, findSimilarArtists) sie nutzt
+ * und ihr Antwortformat (z.B. "similarity" als formatierter Prozent-String) sich von
+ * /dna/similar unterscheidet.
  */
 @RestController
 @RequestMapping("/api/analysis")
@@ -25,9 +32,9 @@ public class AnalysisController {
     private final TrackRepository trackRepository;
 
     public AnalysisController(ThemeClassificationService themeClassificationService,
-                             ArtistStyleAnalysisService artistStyleAnalysisService,
-                             LyricsDNAService lyricsDNAService,
-                             TrackRepository trackRepository) {
+                              ArtistStyleAnalysisService artistStyleAnalysisService,
+                              LyricsDNAService lyricsDNAService,
+                              TrackRepository trackRepository) {
         this.themeClassificationService = themeClassificationService;
         this.artistStyleAnalysisService = artistStyleAnalysisService;
         this.lyricsDNAService = lyricsDNAService;
@@ -142,7 +149,7 @@ public class AnalysisController {
     public ResponseEntity<Map<String, Object>> getArtistStyle(@PathVariable String artistName) {
         try {
             ArtistStyleFeatures features = artistStyleAnalysisService.analyzeStyleForArtist(artistName);
-            
+
             if (features == null) {
                 return ResponseEntity.notFound().build();
             }
@@ -162,13 +169,18 @@ public class AnalysisController {
         }
     }
 
+    /**
+     * Nutzt jetzt lyricsDNAService.generateDNA() statt der entfernten
+     * artistStyleAnalysisService.generateLyricsDNA() - liefert dadurch dieselben,
+     * vollständigen DNA-Daten (inkl. Themenverteilung) wie /dna/{artistName}.
+     */
     @GetMapping("/artist/compare")
     public ResponseEntity<Map<String, Object>> compareArtists(
             @RequestParam String artist1,
             @RequestParam String artist2) {
         try {
-            LyricsDNA dna1 = artistStyleAnalysisService.generateLyricsDNA(artist1);
-            LyricsDNA dna2 = artistStyleAnalysisService.generateLyricsDNA(artist2);
+            LyricsDNA dna1 = lyricsDNAService.generateDNA(artist1);
+            LyricsDNA dna2 = lyricsDNAService.generateDNA(artist2);
 
             if (dna1 == null || dna2 == null) {
                 Map<String, Object> errorBody = new LinkedHashMap<>();
@@ -183,22 +195,22 @@ public class AnalysisController {
             result.put("artist2", artist2);
             result.put("similarity", String.format("%.2f", similarity * 100) + "%");
             result.put("similarityScore", similarity);
-            
+
             Map<String, Object> featuresArtist1 = new LinkedHashMap<>();
             featuresArtist1.put("avgWordLength", dna1.featureVector()[0]);
             featuresArtist1.put("rhymeDensity", dna1.featureVector()[1]);
             featuresArtist1.put("uniqueWordRatio", dna1.featureVector()[2]);
             featuresArtist1.put("avgSentiment", dna1.averageSentiment());
-            
+
             Map<String, Object> featuresArtist2 = new LinkedHashMap<>();
             featuresArtist2.put("avgWordLength", dna2.featureVector()[0]);
             featuresArtist2.put("rhymeDensity", dna2.featureVector()[1]);
             featuresArtist2.put("uniqueWordRatio", dna2.featureVector()[2]);
             featuresArtist2.put("avgSentiment", dna2.averageSentiment());
-            
+
             result.put("featuresArtist1", featuresArtist1);
             result.put("featuresArtist2", featuresArtist2);
-            
+
             return ResponseEntity.ok(result);
         } catch (Exception e) {
             Map<String, Object> errorBody = new LinkedHashMap<>();
@@ -208,12 +220,17 @@ public class AnalysisController {
         }
     }
 
+    /**
+     * Nutzt jetzt lyricsDNAService.findSimilarArtists() statt der entfernten
+     * artistStyleAnalysisService.findSimilarArtists() - liefert dadurch identische
+     * Ergebnisse wie /dna/similar (einheitliche DNA-Quelle).
+     */
     @GetMapping("/artist/similar")
     public ResponseEntity<Map<String, Double>> findSimilarArtists(
             @RequestParam String artistName,
             @RequestParam(defaultValue = "5") int limit) {
         try {
-            Map<String, Double> similar = artistStyleAnalysisService.findSimilarArtists(artistName, limit);
+            Map<String, Double> similar = lyricsDNAService.findSimilarArtists(artistName, limit);
             return ResponseEntity.ok(similar);
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body(new LinkedHashMap<String, Double>());
@@ -246,7 +263,7 @@ public class AnalysisController {
     public ResponseEntity<Map<String, Object>> getArtistDNA(@PathVariable String artistName) {
         try {
             LyricsDNA dna = lyricsDNAService.generateDNA(artistName);
-            
+
             if (dna == null) {
                 return ResponseEntity.notFound().build();
             }

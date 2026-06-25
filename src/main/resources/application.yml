@@ -37,6 +37,11 @@ lyrics-analyzer:
   ingestion:
     # Pause zwischen einzelnen Lyrics-Abrufen, um die kostenlose API nicht zu überlasten
     request-delay-ms: 2000
+  theme-model:
+    # Pfad, unter dem der trainierte Weka-Theme-Klassifikator persistiert wird, damit er
+    # nach einem Neustart der Anwendung nicht erneut trainiert werden muss
+    # (siehe ThemeClassificationService).
+    path: ./data/theme-classifier.model
 
 logging:
   level:

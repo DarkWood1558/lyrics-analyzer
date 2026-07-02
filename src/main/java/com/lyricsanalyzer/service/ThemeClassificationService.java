@@ -137,8 +137,8 @@ public class ThemeClassificationService {
 
                 Instance instance = buildInstance(track.getLyrics(), vocabulary, attributes.size(),
                         track.getSentimentScore() != null ? track.getSentimentScore() : 0.0);
-                instance.setValue(attributes.size() - 1, track.getTheme().name());
                 trainingData.add(instance);
+                instance.setValue(attributes.size() - 1, track.getTheme().name());
             }
 
             if (trainingData.numInstances() == 0) {

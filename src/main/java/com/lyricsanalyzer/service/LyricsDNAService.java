@@ -166,19 +166,24 @@ public class LyricsDNAService {
     public List<Map<String, Object>> getDNAVisualizationData() {
         List<LyricsDNA> allDNA = generateAllDNAWithThemes();
 
+        // Find min/max for normalization
+        double maxX = allDNA.stream().mapToDouble(d -> d.featureVector()[0]).max().orElse(1.0);
+        double maxY = allDNA.stream().mapToDouble(d -> d.featureVector()[1]).max().orElse(1.0);
+        double maxSentiment = allDNA.stream().mapToDouble(LyricsDNA::averageSentiment).map(Math::abs).max().orElse(1.0);
+
         return allDNA.stream()
                 .map(dna -> {
                     Map<String, Object> result = new LinkedHashMap<>();
                     result.put("artist", dna.artistName());
 
-                    // Skalierte Koordinaten für Visualisierung
-                    // x = avgWordLength (skaliert 0-10)
-                    // y = rhymeDensity (skaliert 0-10)
-                    result.put("x", dna.featureVector()[0] * 10);
-                    result.put("y", dna.featureVector()[1] * 10);
+                    // Normalisierte Koordinaten für Visualisierung (0-50)
+                    // x = avgWordLength normalisiert
+                    // y = rhymeDensity normalisiert
+                    result.put("x", (dna.featureVector()[0] / Math.max(maxX, 0.1)) * 50);
+                    result.put("y", (dna.featureVector()[1] / Math.max(maxY, 0.1)) * 50);
 
-                    // Blasengröße basierend auf Sentiment
-                    result.put("size", Math.abs(dna.averageSentiment()) * 10 + 5);
+                    // Blasengröße basierend auf Sentiment (8-20px)
+                    result.put("size", (Math.abs(dna.averageSentiment()) / Math.max(maxSentiment, 0.1)) * 15 + 5);
 
                     // Farbe basierend auf Sentiment
                     result.put("color", dna.averageSentiment() >= 0 ? "positive" : "negative");

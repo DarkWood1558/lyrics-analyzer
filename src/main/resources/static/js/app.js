@@ -813,6 +813,7 @@
                     border: 1px solid var(--border-color);
                     border-radius: var(--border-radius);
                     background: var(--surface-hover);
+                    overflow: hidden;
                 }
                 .dna-point {
                     position: absolute;
@@ -851,7 +852,7 @@
             return `
                     <div class="dna-point"
                          data-point-id="${idx}"
-                         style="left: ${(point.x * 10 + 50)}%; top: ${(10 - point.y * 10 + 10)}%;
+                         style="left: ${point.x}%; top: ${100 - point.y}%;
                                background: ${point.color === 'positive' ? 'var(--success-color)' : 'var(--error-color)'};
                                width: ${point.size}px; height: ${point.size}px;"
                          title="${escapeHtml(point.artist)} (${escapeHtml(point.topTheme)})">

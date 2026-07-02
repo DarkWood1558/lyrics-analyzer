@@ -135,10 +135,23 @@ public class ThemeClassificationService {
                     continue;
                 }
 
-                Instance instance = buildInstance(track.getLyrics(), vocabulary, attributes.size(),
-                        track.getSentimentScore() != null ? track.getSentimentScore() : 0.0);
-                trainingData.add(instance);
+                ArtistStyleFeatures features = featureExtractionService.extractStyleFeatures(track.getLyrics());
+                Map<String, Double> wordFrequencies = featureExtractionService.extractWordFrequencies(track.getLyrics());
+
+                Instance instance = new DenseInstance(1.0, new double[attributes.size()]);
+                instance.setDataset(trainingData);
+                instance.setValue(0, features.avgWordLength());
+                instance.setValue(1, features.rhymeDensity());
+                instance.setValue(2, features.uniqueWordRatio());
+                instance.setValue(3, track.getSentimentScore() != null ? track.getSentimentScore() : 0.0);
+
+                for (int i = 0; i < vocabulary.size(); i++) {
+                    double freq = wordFrequencies.getOrDefault(vocabulary.get(i), 0.0);
+                    instance.setValue(4 + i, freq);
+                }
+
                 instance.setValue(attributes.size() - 1, track.getTheme().name());
+                trainingData.add(instance);
             }
 
             if (trainingData.numInstances() == 0) {

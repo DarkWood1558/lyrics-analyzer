@@ -51,15 +51,18 @@
         // Sentiment
         sentimentLimit: document.getElementById('sentiment-limit'),
         btnRunSentiment: document.getElementById('btn-run-sentiment'),
+        sentimentLoading: document.getElementById('sentiment-loading'),
         sentimentResult: document.getElementById('sentiment-result'),
 
         // Retry Errors
         retryLimit: document.getElementById('retry-limit'),
         btnRetryErrors: document.getElementById('btn-retry-errors'),
+        retryLoading: document.getElementById('retry-loading'),
         retryResult: document.getElementById('retry-result'),
 
         // Backfill Metadata
         btnBackfillMetadata: document.getElementById('btn-backfill-metadata'),
+        backfillLoading: document.getElementById('backfill-loading'),
         backfillResult: document.getElementById('backfill-result'),
 
         // Tracks
@@ -88,27 +91,33 @@
         themeArtist: document.getElementById('theme-artist'),
         themeTitle: document.getElementById('theme-title'),
         btnClassifyTheme: document.getElementById('btn-classify-theme'),
+        themeLoading: document.getElementById('theme-loading'),
         themeResult: document.getElementById('theme-result'),
         btnTrainTheme: document.getElementById('btn-train-theme'),
         btnClassifyAll: document.getElementById('btn-classify-all'),
+        themeTrainLoading: document.getElementById('theme-train-loading'),
         themeTrainResult: document.getElementById('theme-train-result'),
 
         // Style Analysis
         artist1: document.getElementById('artist1'),
         artist2: document.getElementById('artist2'),
         btnCompareArtists: document.getElementById('btn-compare-artists'),
+        styleCompareLoading: document.getElementById('style-compare-loading'),
         styleCompareResult: document.getElementById('style-compare-result'),
         similarArtist: document.getElementById('similar-artist'),
         similarLimit: document.getElementById('similar-limit'),
         btnFindSimilar: document.getElementById('btn-find-similar'),
+        similarLoading: document.getElementById('similar-loading'),
         similarResult: document.getElementById('similar-result'),
 
         // DNA
         btnLoadDNA: document.getElementById('btn-load-dna'),
+        dnaLoading: document.getElementById('dna-loading'),
         dnaVisualization: document.getElementById('dna-visualization'),
         dnaResult: document.getElementById('dna-result'),
         dnaArtist: document.getElementById('dna-artist'),
         btnGetDNA: document.getElementById('btn-get-dna'),
+        dnaDetailsLoading: document.getElementById('dna-details-loading'),
         dnaDetailsResult: document.getElementById('dna-details-result'),
     };
 
@@ -275,7 +284,7 @@
 
     async function handleRunSentiment() {
         const limit = parseInt(elements.sentimentLimit.value) || 50;
-        showLoading(elements.sentimentResult, true);
+        showLoading(elements.sentimentLoading, true);
         try {
             const result = await api.analyzePendingSentiment(limit);
             showResult(elements.sentimentResult, `Analyse für ${result.analyzedCount ?? limit} Tracks abgeschlossen`, false);
@@ -286,7 +295,7 @@
         } catch (error) {
             showResult(elements.sentimentResult, `Fehler: ${error.message}`, true);
         } finally {
-            showLoading(elements.sentimentResult, false);
+            showLoading(elements.sentimentLoading, false);
         }
     }
 
@@ -300,7 +309,7 @@
 
     async function handleRetryErrors() {
         const limit = parseInt(elements.retryLimit.value) || 20;
-        showLoading(elements.retryResult, true);
+        showLoading(elements.retryLoading, true);
         try {
             const result = await api.retryErrorTracks(limit);
             showResult(elements.retryResult, `Erneuter Versuch abgeschlossen: ${result.attempted} versucht, ${result.newlyFetched} neu gefunden, ${result.notFound} nicht gefunden, ${result.stillError} weiterhin Fehler`, false);
@@ -310,7 +319,7 @@
         } catch (error) {
             showResult(elements.retryResult, `Fehler: ${error.message}`, true);
         } finally {
-            showLoading(elements.retryResult, false);
+            showLoading(elements.retryLoading, false);
         }
     }
 
@@ -325,7 +334,7 @@
     async function handleBackfillMetadata() {
         const limitInput = document.getElementById('metadata-limit');
         const limit = parseInt(limitInput?.value) || 50;
-        showLoading(elements.backfillResult, true);
+        showLoading(elements.backfillLoading, true);
         try {
             const result = await api.backfillMetadata(limit);
             showResult(elements.backfillResult, `Metadaten-Backfill abgeschlossen: ${result.attempted} versucht, ${result.updated} aktualisiert, ${result.skipped} übersprungen`, false);
@@ -334,7 +343,7 @@
         } catch (error) {
             showResult(elements.backfillResult, `Fehler: ${error.message}`, true);
         } finally {
-            showLoading(elements.backfillResult, false);
+            showLoading(elements.backfillLoading, false);
         }
     }
 
@@ -594,7 +603,7 @@
             return;
         }
 
-        showLoading(elements.themeResult, true);
+        showLoading(elements.themeLoading, true);
         try {
             const response = await api.classifyTheme(artist, title);
 
@@ -619,12 +628,12 @@
         } catch (error) {
             showResult(elements.themeResult, `Fehler: ${error.message}`, true);
         } finally {
-            showLoading(elements.themeResult, false);
+            showLoading(elements.themeLoading, false);
         }
     }
 
     async function handleTrainTheme() {
-        showLoading(elements.themeTrainResult, true);
+        showLoading(elements.themeTrainLoading, true);
         try {
             const response = await api.trainThemeClassifier();
 
@@ -638,12 +647,12 @@
         } catch (error) {
             showResult(elements.themeTrainResult, `Fehler: ${error.message}`, true);
         } finally {
-            showLoading(elements.themeTrainResult, false);
+            showLoading(elements.themeTrainLoading, false);
         }
     }
 
     async function handleClassifyAll() {
-        showLoading(elements.themeTrainResult, true);
+        showLoading(elements.themeTrainLoading, true);
         try {
             const response = await api.classifyAllThemes();
 
@@ -658,7 +667,7 @@
         } catch (error) {
             showResult(elements.themeTrainResult, `Fehler: ${error.message}`, true);
         } finally {
-            showLoading(elements.themeTrainResult, false);
+            showLoading(elements.themeTrainLoading, false);
         }
     }
 
@@ -682,7 +691,7 @@
             return;
         }
 
-        showLoading(elements.styleCompareResult, true);
+        showLoading(elements.styleCompareLoading, true);
         try {
             const response = await api.compareArtists(artist1, artist2);
 
@@ -709,7 +718,7 @@
         } catch (error) {
             showResult(elements.styleCompareResult, `Fehler: ${error.message}`, true);
         } finally {
-            showLoading(elements.styleCompareResult, false);
+            showLoading(elements.styleCompareLoading, false);
         }
     }
 
@@ -722,7 +731,7 @@
             return;
         }
 
-        showLoading(elements.similarResult, true);
+        showLoading(elements.similarLoading, true);
         try {
             const response = await api.findSimilarArtists(artist, limit);
 
@@ -746,7 +755,7 @@
         } catch (error) {
             showResult(elements.similarResult, `Fehler: ${error.message}`, true);
         } finally {
-            showLoading(elements.similarResult, false);
+            showLoading(elements.similarLoading, false);
         }
     }
 
@@ -762,7 +771,7 @@
     }
 
     async function handleLoadDNA() {
-        showLoading(elements.dnaResult, true);
+        showLoading(elements.dnaLoading, true);
         try {
             const data = await api.getDNAVisualization();
 
@@ -778,7 +787,7 @@
         } catch (error) {
             showResult(elements.dnaResult, `Fehler: ${error.message}`, true);
         } finally {
-            showLoading(elements.dnaResult, false);
+            showLoading(elements.dnaLoading, false);
         }
     }
 
@@ -892,7 +901,7 @@
             return;
         }
 
-        showLoading(elements.dnaDetailsResult, true);
+        showLoading(elements.dnaDetailsLoading, true);
         try {
             const response = await api.getArtistDNA(artist);
 
@@ -919,7 +928,7 @@
         } catch (error) {
             showResult(elements.dnaDetailsResult, `Fehler: ${error.message}`, true);
         } finally {
-            showLoading(elements.dnaDetailsResult, false);
+            showLoading(elements.dnaDetailsLoading, false);
         }
     }
 

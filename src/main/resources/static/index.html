@@ -59,6 +59,10 @@
                     <input type="number" id="sentiment-limit" value="50" min="1" max="500">
                     <button class="btn btn-primary" id="btn-run-sentiment">Analyse starten</button>
                 </div>
+                <div id="sentiment-loading" class="loading hidden">
+                    <div class="spinner"></div>
+                    <span>Analysiere …</span>
+                </div>
                 <div id="sentiment-result" class="result-box hidden"></div>
             </div>
 
@@ -72,6 +76,10 @@
                     <label for="retry-limit">Limit</label>
                     <input type="number" id="retry-limit" value="20" min="1" max="200">
                     <button class="btn btn-secondary" id="btn-retry-errors">Fehler erneut versuchen</button>
+                </div>
+                <div id="retry-loading" class="loading hidden">
+                    <div class="spinner"></div>
+                    <span>Versuche erneut …</span>
                 </div>
                 <div id="retry-result" class="result-box hidden"></div>
             </div>
@@ -87,6 +95,10 @@
                     <label for="metadata-limit">Limit</label>
                     <input type="number" id="metadata-limit" value="50" min="1" max="500">
                     <button class="btn btn-secondary" id="btn-backfill-metadata">Metadaten nachladen</button>
+                </div>
+                <div id="backfill-loading" class="loading hidden">
+                    <div class="spinner"></div>
+                    <span>Lade Metadaten …</span>
                 </div>
                 <div id="backfill-result" class="result-box hidden"></div>
             </div>
@@ -200,6 +212,10 @@
                     <input type="text" id="theme-title" placeholder="Titel">
                     <button class="btn btn-primary" id="btn-classify-theme">Thema vorhersagen</button>
                 </div>
+                <div id="theme-loading" class="loading hidden">
+                    <div class="spinner"></div>
+                    <span>Analysiere …</span>
+                </div>
                 <div id="theme-result" class="result-box hidden"></div>
             </div>
 
@@ -209,6 +225,10 @@
                 <div class="form-row">
                     <button class="btn btn-primary" id="btn-train-theme">Klassifikator trainieren</button>
                     <button class="btn btn-secondary" id="btn-classify-all">Alle klassifizieren</button>
+                </div>
+                <div id="theme-train-loading" class="loading hidden">
+                    <div class="spinner"></div>
+                    <span>Trainiere Klassifikator …</span>
                 </div>
                 <div id="theme-train-result" class="result-box hidden"></div>
             </div>
@@ -225,6 +245,10 @@
                     <input type="text" id="artist2" placeholder="Künstler 2">
                     <button class="btn btn-primary" id="btn-compare-artists">Vergleichen</button>
                 </div>
+                <div id="style-compare-loading" class="loading hidden">
+                    <div class="spinner"></div>
+                    <span>Vergleiche Künstler …</span>
+                </div>
                 <div id="style-compare-result" class="result-box hidden"></div>
             </div>
 
@@ -234,6 +258,10 @@
                     <input type="text" id="similar-artist" placeholder="Künstler">
                     <input type="number" id="similar-limit" value="5" min="1" max="20">
                     <button class="btn btn-primary" id="btn-find-similar">Ähnliche Künstler finden</button>
+                </div>
+                <div id="similar-loading" class="loading hidden">
+                    <div class="spinner"></div>
+                    <span>Suche ähnliche Künstler …</span>
                 </div>
                 <div id="similar-result" class="result-box hidden"></div>
             </div>
@@ -249,6 +277,10 @@
                 <div class="form-row">
                     <button class="btn btn-primary" id="btn-load-dna">DNA laden</button>
                 </div>
+                <div id="dna-loading" class="loading hidden">
+                    <div class="spinner"></div>
+                    <span>Lade DNA …</span>
+                </div>
                 <div id="dna-visualization" style="height: 500px; margin-top: 1rem;"></div>
                 <div id="dna-result" class="result-box hidden"></div>
             </div>
@@ -258,6 +290,10 @@
                 <div class="form-row">
                     <input type="text" id="dna-artist" placeholder="Künstler">
                     <button class="btn btn-primary" id="btn-get-dna">DNA abrufen</button>
+                </div>
+                <div id="dna-details-loading" class="loading hidden">
+                    <div class="spinner"></div>
+                    <span>Lade Details …</span>
                 </div>
                 <div id="dna-details-result" class="result-box hidden"></div>
             </div>

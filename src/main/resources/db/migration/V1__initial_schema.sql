@@ -1,3 +1,6 @@
+-- Consolidated initial schema for lyrics-analyzer
+-- Combines V1-V5: create table, add columns, and ensure correct types
+
 CREATE TABLE track (
     id                  BIGSERIAL PRIMARY KEY,
     deezer_id           BIGINT UNIQUE,
@@ -6,13 +9,15 @@ CREATE TABLE track (
     album_name          VARCHAR(500),
     genre               VARCHAR(255),
     release_year        INTEGER,
+    deezer_album_id     BIGINT,
+    theme               VARCHAR(20),
 
     lyrics              TEXT,
-    lyrics_status       VARCHAR(20) NOT NULL DEFAULT 'PENDING', -- PENDING, FOUND, NOT_FOUND, ERROR
+    lyrics_status       VARCHAR(20) NOT NULL DEFAULT 'PENDING',
     lyrics_fetched_at   TIMESTAMP,
 
-    sentiment_label     VARCHAR(20),   -- z.B. VERY_NEGATIVE..VERY_POSITIVE
-    sentiment_score     DOUBLE PRECISION, -- numerischer Score, z.B. 0.0 (negativ) bis 4.0 (positiv)
+    sentiment_label     VARCHAR(20),
+    sentiment_score     DOUBLE PRECISION,
     sentiment_analyzed_at TIMESTAMP,
 
     created_at          TIMESTAMP NOT NULL DEFAULT now(),
@@ -21,6 +26,9 @@ CREATE TABLE track (
     CONSTRAINT uq_artist_title UNIQUE (artist_name, title)
 );
 
+-- Indices for frequently queried columns
 CREATE INDEX idx_track_lyrics_status ON track (lyrics_status);
 CREATE INDEX idx_track_genre ON track (genre);
 CREATE INDEX idx_track_release_year ON track (release_year);
+CREATE INDEX idx_track_deezer_album_id ON track (deezer_album_id);
+CREATE INDEX idx_track_theme ON track (theme);

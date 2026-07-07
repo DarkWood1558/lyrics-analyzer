@@ -143,6 +143,25 @@
         });
     }
 
+    async function deleteTrack(trackId) {
+        return apiRequest(`${API_BASE}/tracks/${trackId}`, {
+            method: 'DELETE',
+        });
+    }
+
+    async function deleteTracks(trackIds) {
+        const results = [];
+        for (const id of trackIds) {
+            try {
+                await deleteTrack(id);
+                results.push({ id, success: true });
+            } catch (error) {
+                results.push({ id, success: false, error: error.message });
+            }
+        }
+        return results;
+    }
+
     window.LyricsAnalyzerAPI = {
         searchAndIngestTracks,
         analyzePendingSentiment,
@@ -169,5 +188,7 @@
         getSimilarArtistsDNA,
         getAllThemes,
         saveTrackTheme,
+        deleteTrack,
+        deleteTracks,
     };
 })();

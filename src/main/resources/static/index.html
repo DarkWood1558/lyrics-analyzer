@@ -153,10 +153,19 @@
                     <button class="btn btn-secondary" id="btn-apply-filter">Filtern</button>
                 </div>
 
+                <div class="action-bar">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="select-all-tracks"> <strong>Alle auswählen</strong>
+                    </label>
+                    <button class="btn btn-danger" id="btn-delete-selected" disabled>Ausgewählte löschen</button>
+                    <span id="selected-count" class="muted"></span>
+                </div>
+
                 <div class="table-wrapper">
                     <table id="tracks-table">
                         <thead>
                         <tr>
+                            <th style="width: 40px;"><input type="checkbox" id="select-all-header"></th>
                             <th>ID</th>
                             <th>Künstler</th>
                             <th>Titel</th>
@@ -169,7 +178,7 @@
                         </tr>
                         </thead>
                         <tbody id="tracks-tbody">
-                        <tr><td colspan="9" class="muted">Lade Tracks …</td></tr>
+                        <tr><td colspan="10" class="muted">Lade Tracks …</td></tr>
                         </tbody>
                     </table>
                 </div>

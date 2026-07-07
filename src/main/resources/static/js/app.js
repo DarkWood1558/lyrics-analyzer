@@ -70,6 +70,10 @@
         trackStatusFilter: document.getElementById('track-status-filter'),
         btnApplyFilter: document.getElementById('btn-apply-filter'),
         tracksTbody: document.getElementById('tracks-tbody'),
+        selectAllTracks: document.getElementById('select-all-tracks'),
+        selectAllHeader: document.getElementById('select-all-header'),
+        btnDeleteSelected: document.getElementById('btn-delete-selected'),
+        selectedCount: document.getElementById('selected-count'),
         pagination: document.getElementById('pagination'),
         paginationInfo: document.getElementById('pagination-info'),
         btnPrevPage: document.getElementById('btn-prev-page'),
@@ -349,6 +353,116 @@
 
     // ==================== TRACKS ====================
 
+    // Track selection state
+    const selectedTrackIds = new Set();
+
+    function initTrackSelection() {
+        // Get all checkboxes
+        const checkboxes = document.querySelectorAll('.track-checkbox');
+        
+        // Update select all checkboxes
+        function updateSelectAll() {
+            const allChecked = checkboxes.length > 0 && selectedTrackIds.size === checkboxes.length;
+            if (elements.selectAllTracks) {
+                elements.selectAllTracks.checked = allChecked;
+            }
+            if (elements.selectAllHeader) {
+                elements.selectAllHeader.checked = allChecked;
+            }
+            
+            // Update delete button and count
+            if (elements.btnDeleteSelected) {
+                elements.btnDeleteSelected.disabled = selectedTrackIds.size === 0;
+            }
+            if (elements.selectedCount) {
+                elements.selectedCount.textContent = selectedTrackIds.size > 0 
+                    ? ` (${selectedTrackIds.size} ausgewählt)` 
+                    : '';
+            }
+        }
+
+        // Clear selection
+        function clearSelection() {
+            selectedTrackIds.clear();
+            checkboxes.forEach(cb => cb.checked = false);
+            updateSelectAll();
+        }
+
+        // Add event listeners to all checkboxes
+        checkboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', (e) => {
+                const trackId = parseInt(e.target.dataset.trackId);
+                if (e.target.checked) {
+                    selectedTrackIds.add(trackId);
+                } else {
+                    selectedTrackIds.delete(trackId);
+                }
+                updateSelectAll();
+            });
+        });
+
+        // Select all / deselect all
+        if (elements.selectAllTracks) {
+            elements.selectAllTracks.addEventListener('change', (e) => {
+                checkboxes.forEach(cb => cb.checked = e.target.checked);
+                if (e.target.checked) {
+                    checkboxes.forEach(cb => {
+                        const trackId = parseInt(cb.dataset.trackId);
+                        selectedTrackIds.add(trackId);
+                    });
+                } else {
+                    clearSelection();
+                }
+                updateSelectAll();
+            });
+        }
+
+        // Header select all
+        if (elements.selectAllHeader) {
+            elements.selectAllHeader.addEventListener('change', (e) => {
+                elements.selectAllTracks.checked = e.target.checked;
+                elements.selectAllTracks.dispatchEvent(new Event('change'));
+            });
+        }
+
+        // Delete selected tracks
+        if (elements.btnDeleteSelected) {
+            elements.btnDeleteSelected.addEventListener('click', async () => {
+                if (selectedTrackIds.size === 0) return;
+                
+                if (!confirm(`Wirklich ${selectedTrackIds.size} Track(s) löschen?`)) {
+                    return;
+                }
+
+                const deleteBtn = elements.btnDeleteSelected;
+                const originalText = deleteBtn.textContent;
+                deleteBtn.disabled = true;
+                deleteBtn.textContent = 'Lösche…';
+
+                try {
+                    const results = await api.deleteTracks(Array.from(selectedTrackIds));
+                    
+                    const successCount = results.filter(r => r.success).length;
+                    const errorCount = results.length - successCount;
+                    
+                    showToast(`${successCount} Track(s) erfolgreich gelöscht${errorCount > 0 ? `, ${errorCount} fehlgeschlagen` : ''}`);
+                    
+                    // Reload tracks
+                    loadTracks();
+                    clearSelection();
+                } catch (error) {
+                    showToast(`Fehler beim Löschen: ${error.message}`);
+                } finally {
+                    deleteBtn.disabled = false;
+                    deleteBtn.textContent = originalText;
+                }
+            });
+        }
+
+        // Initial state
+        updateSelectAll();
+    }
+
     function initTracks() {
         if (elements.btnApplyFilter) {
             elements.btnApplyFilter.addEventListener('click', () => {
@@ -426,12 +540,13 @@
     function renderTracksTable() {
         if (!elements.tracksTbody) return;
         if (state.tracks.data.length === 0) {
-            elements.tracksTbody.innerHTML = '<tr><td colspan="9" class="muted">Keine Tracks gefunden</td></tr>';
+            elements.tracksTbody.innerHTML = '<tr><td colspan="10" class="muted">Keine Tracks gefunden</td></tr>';
             return;
         }
         elements.tracksTbody.innerHTML = state.tracks.data
             .map(track => `
                 <tr data-track-id="${track.id}">
+                    <td><input type="checkbox" class="track-checkbox" data-track-id="${track.id}"></td>
                     <td>${track.id}</td>
                     <td>${escapeHtml(track.artistName)}</td>
                     <td>${escapeHtml(track.title)}</td>
@@ -444,6 +559,9 @@
                 </tr>
             `)
             .join('');
+        
+        // Re-initialize checkbox and delete button event listeners
+        initTrackSelection();
         
         // Add event listeners for theme dropdowns
         elements.tracksTbody.querySelectorAll('.theme-select').forEach(select => {

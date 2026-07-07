@@ -125,4 +125,17 @@ public class TrackController {
                         "trackCount", row.getTrack_count()))
                 .collect(Collectors.toList());
     }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Map<String, Object>> deleteTrack(@PathVariable Long id) {
+        return trackRepository.findById(id)
+                .map(track -> {
+                    trackRepository.delete(track);
+                    Map<String, Object> response = new LinkedHashMap<>();
+                    response.put("message", "Track gelöscht");
+                    response.put("trackId", id);
+                    return ResponseEntity.ok(response);
+                })
+                .orElse(ResponseEntity.notFound().build());
+    }
 }

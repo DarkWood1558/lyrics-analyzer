@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import weka.classifiers.Classifier;
 import weka.classifiers.bayes.NaiveBayes;
+import weka.classifiers.trees.RandomForest;
 import weka.core.*;
 
 import java.io.File;
@@ -43,8 +44,8 @@ public class ThemeClassificationService {
 
     private static final Logger log = LoggerFactory.getLogger(ThemeClassificationService.class);
 
-    /** Anzahl der Vokabular-Wörter, die als Features genutzt werden (siehe buildVocabulary). */
-    private static final int VOCABULARY_SIZE = 100;
+    /** Anzahl der Vokabular-Wörter/Bigramme, die als Features genutzt werden (siehe buildVocabulary). */
+    private static final int VOCABULARY_SIZE = 500;
 
     private final FeatureExtractionService featureExtractionService;
     private final String modelFilePath;
@@ -83,8 +84,13 @@ public class ThemeClassificationService {
             if (track.getLyrics() == null || track.getLyrics().isBlank()) {
                 continue;
             }
+            // Einzelne Wörter
             Map<String, Double> wordFreq = featureExtractionService.extractWordFrequencies(track.getLyrics());
             wordFreq.forEach((word, freq) -> globalFrequencies.merge(word, freq, Double::sum));
+            
+            // Bigramme
+            Map<String, Double> bigramFreq = featureExtractionService.extractBigramFrequencies(track.getLyrics());
+            bigramFreq.forEach((bigram, freq) -> globalFrequencies.merge(bigram, freq, Double::sum));
         }
 
         return globalFrequencies.entrySet().stream()
@@ -96,11 +102,20 @@ public class ThemeClassificationService {
 
     private List<Attribute> buildAttributes(List<String> vocabulary) {
         ArrayList<Attribute> attributes = new ArrayList<>();
+        // Basis-Features
         attributes.add(new Attribute("avgWordLength"));
         attributes.add(new Attribute("rhymeDensity"));
         attributes.add(new Attribute("uniqueWordRatio"));
         attributes.add(new Attribute("sentimentScore"));
+        
+        // Neue Features
+        attributes.add(new Attribute("avgLineLength"));
+        attributes.add(new Attribute("exclamationDensity"));
+        attributes.add(new Attribute("questionMarkDensity"));
+        attributes.add(new Attribute("capitalWordRatio"));
+        attributes.add(new Attribute("lineCount"));
 
+        // Vokabular (Wörter + Bigramme)
         for (String word : vocabulary) {
             attributes.add(new Attribute("word_" + word));
         }
@@ -137,17 +152,36 @@ public class ThemeClassificationService {
 
                 ArtistStyleFeatures features = featureExtractionService.extractStyleFeatures(track.getLyrics());
                 Map<String, Double> wordFrequencies = featureExtractionService.extractWordFrequencies(track.getLyrics());
+                Map<String, Double> bigramFrequencies = featureExtractionService.extractBigramFrequencies(track.getLyrics());
 
                 Instance instance = new DenseInstance(1.0, new double[attributes.size()]);
                 instance.setDataset(trainingData);
+                
+                // Basis-Features
                 instance.setValue(0, features.avgWordLength());
                 instance.setValue(1, features.rhymeDensity());
                 instance.setValue(2, features.uniqueWordRatio());
                 instance.setValue(3, track.getSentimentScore() != null ? track.getSentimentScore() : 0.0);
+                
+                // Neue Features
+                instance.setValue(4, features.avgLineLength());
+                instance.setValue(5, features.exclamationDensity());
+                instance.setValue(6, features.questionMarkDensity());
+                instance.setValue(7, features.capitalWordRatio());
+                instance.setValue(8, features.lineCount());
 
+                // Vokabular (Wörter + Bigramme) - beginnt bei Index 9
                 for (int i = 0; i < vocabulary.size(); i++) {
-                    double freq = wordFrequencies.getOrDefault(vocabulary.get(i), 0.0);
-                    instance.setValue(4 + i, freq);
+                    String vocabItem = vocabulary.get(i);
+                    double freq = 0.0;
+                    if (vocabItem.contains("_")) {
+                        // Bigram
+                        freq = bigramFrequencies.getOrDefault(vocabItem, 0.0);
+                    } else {
+                        // Einzelnes Wort
+                        freq = wordFrequencies.getOrDefault(vocabItem, 0.0);
+                    }
+                    instance.setValue(9 + i, freq);
                 }
 
                 instance.setValue(attributes.size() - 1, track.getTheme().name());
@@ -158,7 +192,10 @@ public class ThemeClassificationService {
                 throw new IllegalStateException("No valid training instances created");
             }
 
-            Classifier classifier = new NaiveBayes();
+            RandomForest classifier = new RandomForest();
+            // Set number of trees using Options API
+            String[] options = {"-I", "100"}; // -I = numTrees
+            classifier.setOptions(options);
             classifier.buildClassifier(trainingData);
 
             TrainedModel newModel = new TrainedModel(classifier, trainingData, vocabulary);
@@ -180,16 +217,35 @@ public class ThemeClassificationService {
     private Instance buildInstance(String lyrics, List<String> vocabulary, int totalAttributes, double sentimentScore) {
         ArtistStyleFeatures features = featureExtractionService.extractStyleFeatures(lyrics);
         Map<String, Double> wordFrequencies = featureExtractionService.extractWordFrequencies(lyrics);
+        Map<String, Double> bigramFrequencies = featureExtractionService.extractBigramFrequencies(lyrics);
 
         Instance instance = new DenseInstance(totalAttributes);
+        
+        // Basis-Features
         instance.setValue(0, features.avgWordLength());
         instance.setValue(1, features.rhymeDensity());
         instance.setValue(2, features.uniqueWordRatio());
         instance.setValue(3, sentimentScore);
+        
+        // Neue Features
+        instance.setValue(4, features.avgLineLength());
+        instance.setValue(5, features.exclamationDensity());
+        instance.setValue(6, features.questionMarkDensity());
+        instance.setValue(7, features.capitalWordRatio());
+        instance.setValue(8, features.lineCount());
 
+        // Vokabular (Wörter + Bigramme) - beginnt bei Index 9
         for (int i = 0; i < vocabulary.size(); i++) {
-            double freq = wordFrequencies.getOrDefault(vocabulary.get(i), 0.0);
-            instance.setValue(4 + i, freq);
+            String vocabItem = vocabulary.get(i);
+            double freq = 0.0;
+            if (vocabItem.contains("_")) {
+                // Bigram
+                freq = bigramFrequencies.getOrDefault(vocabItem, 0.0);
+            } else {
+                // Einzelnes Wort
+                freq = wordFrequencies.getOrDefault(vocabItem, 0.0);
+            }
+            instance.setValue(9 + i, freq);
         }
 
         return instance;

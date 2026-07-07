@@ -43,6 +43,33 @@ public class FeatureExtractionService {
                 .collect(Collectors.toMap(Map.Entry::getKey, e -> (double) e.getValue() / totalWordsFinal, (a, b) -> b, LinkedHashMap::new));
     }
 
+    public Map<String, Double> extractBigramFrequencies(String text) {
+        if (text == null || text.isBlank()) return Map.of();
+        
+        String[] words = text.toLowerCase().replaceAll("[^a-zA-Z\\s]", " ").split("\\s+");
+        Map<String, Integer> bigramCounts = new HashMap<>();
+        int totalBigrams = 0;
+        
+        for (int i = 0; i < words.length - 1; i++) {
+            String word1 = words[i].trim();
+            String word2 = words[i + 1].trim();
+            if (word1.length() > 2 && word2.length() > 2 && 
+                !STOP_WORDS.contains(word1) && !STOP_WORDS.contains(word2)) {
+                String bigram = word1 + "_" + word2;
+                bigramCounts.merge(bigram, 1, Integer::sum);
+                totalBigrams++;
+            }
+        }
+        
+        if (totalBigrams == 0) return Map.of();
+        
+        final int totalBigramsFinal = totalBigrams;
+        return bigramCounts.entrySet().stream()
+                .sorted(Map.Entry.<String, Integer>comparingByValue().reversed())
+                .collect(Collectors.toMap(Map.Entry::getKey, 
+                    e -> (double) e.getValue() / totalBigramsFinal, (a, b) -> b, LinkedHashMap::new));
+    }
+
     public double calculateAvgWordLength(String text) {
         if (text == null || text.isBlank()) return 0.0;
         String[] words = text.split("\\s+");
@@ -72,6 +99,42 @@ public class FeatureExtractionService {
         return (double) uniqueWords.size() / words.length;
     }
 
+    public double calculateAvgLineLength(String text) {
+        if (text == null || text.isBlank()) return 0.0;
+        String[] lines = text.split("\\n");
+        if (lines.length == 0) return 0.0;
+        return Arrays.stream(lines).mapToInt(String::length).average().orElse(0.0);
+    }
+
+    public double calculateExclamationDensity(String text) {
+        if (text == null || text.isBlank()) return 0.0;
+        long exclamationCount = text.chars().filter(ch -> ch == '!').count();
+        long wordCount = Arrays.stream(text.split("\\s+")).count();
+        return wordCount > 0 ? (double) exclamationCount / wordCount * 100 : 0.0;
+    }
+
+    public double calculateQuestionMarkDensity(String text) {
+        if (text == null || text.isBlank()) return 0.0;
+        long questionCount = text.chars().filter(ch -> ch == '?').count();
+        long wordCount = Arrays.stream(text.split("\\s+")).count();
+        return wordCount > 0 ? (double) questionCount / wordCount * 100 : 0.0;
+    }
+
+    public double calculateCapitalWordRatio(String text) {
+        if (text == null || text.isBlank()) return 0.0;
+        String[] words = text.split("\\s+");
+        if (words.length == 0) return 0.0;
+        long capitalWords = Arrays.stream(words)
+                .filter(word -> !word.isEmpty() && Character.isUpperCase(word.charAt(0)))
+                .count();
+        return (double) capitalWords / words.length;
+    }
+
+    public int calculateLineCount(String text) {
+        if (text == null || text.isBlank()) return 0;
+        return text.split("\\n").length;
+    }
+
     private String extractLastWord(String line) {
         if (line == null || line.isBlank()) return "";
         String[] words = line.trim().split("\\s+");
@@ -96,18 +159,28 @@ public class FeatureExtractionService {
                 calculateRhymeDensity(lyrics),
                 calculateUniqueWordRatio(lyrics),
                 null,
-                extractWordFrequencies(lyrics)
+                extractWordFrequencies(lyrics),
+                calculateAvgLineLength(lyrics),
+                calculateExclamationDensity(lyrics),
+                calculateQuestionMarkDensity(lyrics),
+                calculateCapitalWordRatio(lyrics),
+                calculateLineCount(lyrics)
         );
     }
 
     public ArtistStyleFeatures extractStyleFeaturesForArtist(List<String> lyricsList) {
         if (lyricsList == null || lyricsList.isEmpty()) {
-            return new ArtistStyleFeatures(0, 0, 0, null, Map.of());
+            return new ArtistStyleFeatures(0, 0, 0, null, Map.of(), 0, 0, 0, 0, 0);
         }
         
         double totalAvgWordLength = 0;
         double totalRhymeDensity = 0;
         double totalUniqueWordRatio = 0;
+        double totalAvgLineLength = 0;
+        double totalExclamationDensity = 0;
+        double totalQuestionMarkDensity = 0;
+        double totalCapitalWordRatio = 0;
+        int totalLineCount = 0;
         Map<String, Double> aggregatedWordFrequencies = new HashMap<>();
         int count = 0;
         
@@ -117,11 +190,16 @@ public class FeatureExtractionService {
             totalAvgWordLength += features.avgWordLength();
             totalRhymeDensity += features.rhymeDensity();
             totalUniqueWordRatio += features.uniqueWordRatio();
+            totalAvgLineLength += features.avgLineLength();
+            totalExclamationDensity += features.exclamationDensity();
+            totalQuestionMarkDensity += features.questionMarkDensity();
+            totalCapitalWordRatio += features.capitalWordRatio();
+            totalLineCount += features.lineCount();
             count++;
             features.topWords().forEach((word, freq) -> aggregatedWordFrequencies.merge(word, freq, Double::sum));
         }
         
-        if (count == 0) return new ArtistStyleFeatures(0, 0, 0, null, Map.of());
+        if (count == 0) return new ArtistStyleFeatures(0, 0, 0, null, Map.of(), 0, 0, 0, 0, 0);
         
         final int countFinal = count;
         Map<String, Double> avgWordFrequencies = aggregatedWordFrequencies.entrySet().stream()
@@ -132,7 +210,12 @@ public class FeatureExtractionService {
                 totalRhymeDensity / count,
                 totalUniqueWordRatio / count,
                 null,
-                avgWordFrequencies
+                avgWordFrequencies,
+                totalAvgLineLength / count,
+                totalExclamationDensity / count,
+                totalQuestionMarkDensity / count,
+                totalCapitalWordRatio / count,
+                totalLineCount / count
         );
     }
 }

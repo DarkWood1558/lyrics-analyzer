@@ -46,7 +46,7 @@ public class ArtistStyleAnalysisService {
      */
     public ArtistStyleFeatures analyzeStyle(String lyrics) {
         if (lyrics == null || lyrics.isBlank()) {
-            return new ArtistStyleFeatures(0, 0, 0, null, Map.of());
+            return new ArtistStyleFeatures(0, 0, 0, null, Map.of(), 0, 0, 0, 0, 0);
         }
         return featureExtractionService.extractStyleFeatures(lyrics);
     }

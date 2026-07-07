@@ -80,6 +80,25 @@
             <version>3.8.6</version>
         </dependency>
 
+        <!-- Deep Learning: Deeplearning4j (DL4J) für neuronale Netze - TODO: Implementierung abschließen -->
+        <!-- 
+        <dependency>
+            <groupId>org.deeplearning4j</groupId>
+            <artifactId>deeplearning4j-core</artifactId>
+            <version>1.0.0-beta7</version>
+        </dependency>
+        <dependency>
+            <groupId>org.nd4j</groupId>
+            <artifactId>nd4j-native-platform</artifactId>
+            <version>1.0.0-beta7</version>
+        </dependency>
+        <dependency>
+            <groupId>org.bytedeco</groupId>
+            <artifactId>javacpp</artifactId>
+            <version>1.5.9</version>
+        </dependency>
+        -->
+
         <!-- Tests -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

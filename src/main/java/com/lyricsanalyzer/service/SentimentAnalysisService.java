@@ -124,4 +124,32 @@ public class SentimentAnalysisService {
             default -> SentimentLabel.VERY_POSITIVE;
         };
     }
+
+    /**
+     * Skaliert den internen Sentiment-Score (0-4) auf eine leserfreundliche
+     * 0-100 Skala für die Darstellung in der GUI.
+     * 
+     * Mapping:
+     * - 0.0 (very negative) -> 0
+     * - 2.0 (neutral) -> 50
+     * - 4.0 (very positive) -> 100
+     * 
+     * @param rawScore der Rohwert aus CoreNLP (0.0 - 4.0)
+     * @return normalisierter Score (0 - 100)
+     */
+    public static double normalizeScore(double rawScore) {
+        // Lineare Transformation: [0, 4] -> [0, 100]
+        return rawScore * 25.0;
+    }
+
+    /**
+     * Konvertiert einen normalisierten Score (0-100) zurück in den Rohwert (0-4).
+     * Nützlich falls wir den Rohwert aus dem normalisierten berechnen müssen.
+     * 
+     * @param normalizedScore der normalisierte Score (0 - 100)
+     * @return Rohwert (0.0 - 4.0)
+     */
+    public static double denormalizeScore(double normalizedScore) {
+        return normalizedScore / 25.0;
+    }
 }

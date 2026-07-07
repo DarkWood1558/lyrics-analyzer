@@ -4,6 +4,7 @@ import com.lyricsanalyzer.model.LyricsStatus;
 import com.lyricsanalyzer.model.SentimentLabel;
 import com.lyricsanalyzer.model.Theme;
 import com.lyricsanalyzer.model.Track;
+import com.lyricsanalyzer.service.SentimentAnalysisService;
 
 /**
  * Detailansicht eines einzelnen Tracks inklusive vollständigem Lyrics-Text.
@@ -25,9 +26,15 @@ public record TrackDetailResponse(
         String lyrics,
         SentimentLabel sentimentLabel,
         Double sentimentScore,
+        Double sentimentScoreNormalized,
         Theme theme
 ) {
     public static TrackDetailResponse from(Track track) {
+        Double rawScore = track.getSentimentScore();
+        Double normalizedScore = (rawScore != null) 
+                ? SentimentAnalysisService.normalizeScore(rawScore) 
+                : null;
+        
         return new TrackDetailResponse(
                 track.getId(),
                 track.getArtistName(),
@@ -39,6 +46,7 @@ public record TrackDetailResponse(
                 track.getLyrics(),
                 track.getSentimentLabel(),
                 track.getSentimentScore(),
+                normalizedScore,
                 track.getTheme()
         );
     }

@@ -199,6 +199,7 @@ public class LyricsDNAService {
                             .orElse("UNKNOWN"));
 
                     result.put("averageSentiment", dna.averageSentiment());
+                    result.put("averageSentimentNormalized", SentimentAnalysisService.normalizeScore(dna.averageSentiment()));
 
                     return result;
                 })

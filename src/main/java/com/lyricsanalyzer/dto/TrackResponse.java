@@ -4,6 +4,7 @@ import com.lyricsanalyzer.model.LyricsStatus;
 import com.lyricsanalyzer.model.SentimentLabel;
 import com.lyricsanalyzer.model.Theme;
 import com.lyricsanalyzer.model.Track;
+import com.lyricsanalyzer.service.SentimentAnalysisService;
 
 /**
  * Antwort-DTO für Track-Abfragen. Bewusst getrennt von der Entity,
@@ -20,9 +21,15 @@ public record TrackResponse(
         boolean hasLyrics,
         SentimentLabel sentimentLabel,
         Double sentimentScore,
+        Double sentimentScoreNormalized,
         Theme theme
 ) {
     public static TrackResponse from(Track track) {
+        Double rawScore = track.getSentimentScore();
+        Double normalizedScore = (rawScore != null) 
+                ? SentimentAnalysisService.normalizeScore(rawScore) 
+                : null;
+        
         return new TrackResponse(
                 track.getId(),
                 track.getArtistName(),
@@ -34,6 +41,7 @@ public record TrackResponse(
                 track.getLyrics() != null,
                 track.getSentimentLabel(),
                 track.getSentimentScore(),
+                normalizedScore,
                 track.getTheme()
         );
     }

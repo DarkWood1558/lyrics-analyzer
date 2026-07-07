@@ -7,6 +7,7 @@ import com.lyricsanalyzer.model.LyricsStatus;
 import com.lyricsanalyzer.model.Theme;
 import com.lyricsanalyzer.model.Track;
 import com.lyricsanalyzer.repository.TrackRepository;
+import com.lyricsanalyzer.service.SentimentAnalysisService;
 import java.util.Arrays;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
@@ -106,10 +107,17 @@ public class TrackController {
     @GetMapping("/stats/by-genre")
     public List<Map<String, Object>> sentimentByGenre() {
         return trackRepository.findAverageSentimentByGenre().stream()
-                .map(row -> Map.<String, Object>of(
-                        "genre", row.getGenre(),
-                        "averageSentimentScore", row.getAvg_score(),
-                        "trackCount", row.getTrack_count()))
+                .map(row -> {
+                    Double avgScore = row.getAvg_score();
+                    Double normalizedAvg = (avgScore != null) 
+                            ? SentimentAnalysisService.normalizeScore(avgScore) 
+                            : null;
+                    return Map.<String, Object>of(
+                            "genre", row.getGenre(),
+                            "averageSentimentScore", avgScore,
+                            "averageSentimentScoreNormalized", normalizedAvg,
+                            "trackCount", row.getTrack_count());
+                })
                 .collect(Collectors.toList());
     }
 
@@ -119,10 +127,17 @@ public class TrackController {
     @GetMapping("/stats/by-year")
     public List<Map<String, Object>> sentimentByYear() {
         return trackRepository.findAverageSentimentByYear().stream()
-                .map(row -> Map.<String, Object>of(
-                        "year", row.getYear(),
-                        "averageSentimentScore", row.getAvg_score(),
-                        "trackCount", row.getTrack_count()))
+                .map(row -> {
+                    Double avgScore = row.getAvg_score();
+                    Double normalizedAvg = (avgScore != null) 
+                            ? SentimentAnalysisService.normalizeScore(avgScore) 
+                            : null;
+                    return Map.<String, Object>of(
+                            "year", row.getYear(),
+                            "averageSentimentScore", avgScore,
+                            "averageSentimentScoreNormalized", normalizedAvg,
+                            "trackCount", row.getTrack_count());
+                })
                 .collect(Collectors.toList());
     }
 

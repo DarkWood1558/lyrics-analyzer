@@ -201,12 +201,14 @@ public class AnalysisController {
             featuresArtist1.put("rhymeDensity", dna1.featureVector()[1]);
             featuresArtist1.put("uniqueWordRatio", dna1.featureVector()[2]);
             featuresArtist1.put("avgSentiment", dna1.averageSentiment());
+            featuresArtist1.put("avgSentimentNormalized", SentimentAnalysisService.normalizeScore(dna1.averageSentiment()));
 
             Map<String, Object> featuresArtist2 = new LinkedHashMap<>();
             featuresArtist2.put("avgWordLength", dna2.featureVector()[0]);
             featuresArtist2.put("rhymeDensity", dna2.featureVector()[1]);
             featuresArtist2.put("uniqueWordRatio", dna2.featureVector()[2]);
             featuresArtist2.put("avgSentiment", dna2.averageSentiment());
+            featuresArtist2.put("avgSentimentNormalized", SentimentAnalysisService.normalizeScore(dna2.averageSentiment()));
 
             result.put("featuresArtist1", featuresArtist1);
             result.put("featuresArtist2", featuresArtist2);
@@ -272,6 +274,7 @@ public class AnalysisController {
             result.put("artist", dna.artistName());
             result.put("featureVector", dna.featureVector());
             result.put("averageSentiment", dna.averageSentiment());
+            result.put("averageSentimentNormalized", SentimentAnalysisService.normalizeScore(dna.averageSentiment()));
             result.put("themeDistribution", dna.themeDistribution());
             return ResponseEntity.ok(result);
         } catch (Exception e) {

@@ -197,18 +197,82 @@ public class AnalysisController {
             result.put("similarityScore", similarity);
 
             Map<String, Object> featuresArtist1 = new LinkedHashMap<>();
+            // Alle 20 Features anzeigen
             featuresArtist1.put("avgWordLength", dna1.featureVector()[0]);
             featuresArtist1.put("rhymeDensity", dna1.featureVector()[1]);
             featuresArtist1.put("uniqueWordRatio", dna1.featureVector()[2]);
+            featuresArtist1.put("avgLineLength", dna1.featureVector()[3]);
+            featuresArtist1.put("exclamationDensity", dna1.featureVector()[4]);
+            featuresArtist1.put("questionMarkDensity", dna1.featureVector()[5]);
+            featuresArtist1.put("capitalWordRatio", dna1.featureVector()[6]);
+            featuresArtist1.put("lineCount", dna1.featureVector()[7]);
+            // trackCount als normalisierter Wert (0-1) + Originalwert
+            featuresArtist1.put("trackCount", dna1.featureVector()[8]);
+            featuresArtist1.put("trackCountOriginal", Math.round(dna1.featureVector()[8] * 50));
+            // Top-5 Wörter
+            featuresArtist1.put("topWord1", dna1.featureVector()[9]);
+            featuresArtist1.put("topWord2", dna1.featureVector()[10]);
+            featuresArtist1.put("topWord3", dna1.featureVector()[11]);
+            featuresArtist1.put("topWord4", dna1.featureVector()[12]);
+            featuresArtist1.put("topWord5", dna1.featureVector()[13]);
+            // Genre One-Hot-Encoding (5 binäre Features: Rock, Pop, Schlager, Rap, Sonstige)
+            featuresArtist1.put("genreRock", dna1.featureVector()[14]);
+            featuresArtist1.put("genrePop", dna1.featureVector()[15]);
+            featuresArtist1.put("genreSchlager", dna1.featureVector()[16]);
+            featuresArtist1.put("genreRap", dna1.featureVector()[17]);
+            featuresArtist1.put("genreSonstige", dna1.featureVector()[18]);
+            
+            // Genre-Kategorie und Name für bessere Lesbarkeit
+            int genreCategory1 = 0;
+            if (dna1.featureVector()[14] == 1.0) genreCategory1 = 1;
+            else if (dna1.featureVector()[15] == 1.0) genreCategory1 = 2;
+            else if (dna1.featureVector()[16] == 1.0) genreCategory1 = 3;
+            else if (dna1.featureVector()[17] == 1.0) genreCategory1 = 4;
+            else if (dna1.featureVector()[18] == 1.0) genreCategory1 = 5;
+            featuresArtist1.put("genreCategory", genreCategory1);
+            featuresArtist1.put("genreName", getGenreName(genreCategory1));
+            
             featuresArtist1.put("avgSentiment", dna1.averageSentiment());
             featuresArtist1.put("avgSentimentNormalized", SentimentAnalysisService.normalizeScore(dna1.averageSentiment()));
 
             Map<String, Object> featuresArtist2 = new LinkedHashMap<>();
+            // Alle 20 Features anzeigen
             featuresArtist2.put("avgWordLength", dna2.featureVector()[0]);
             featuresArtist2.put("rhymeDensity", dna2.featureVector()[1]);
             featuresArtist2.put("uniqueWordRatio", dna2.featureVector()[2]);
+            featuresArtist2.put("avgLineLength", dna2.featureVector()[3]);
+            featuresArtist2.put("exclamationDensity", dna2.featureVector()[4]);
+            featuresArtist2.put("questionMarkDensity", dna2.featureVector()[5]);
+            featuresArtist2.put("capitalWordRatio", dna2.featureVector()[6]);
+            featuresArtist2.put("lineCount", dna2.featureVector()[7]);
+            // trackCount als normalisierter Wert (0-1) + Originalwert
+            featuresArtist2.put("trackCount", dna2.featureVector()[8]);
+            featuresArtist2.put("trackCountOriginal", Math.round(dna2.featureVector()[8] * 50));
+            // Top-5 Wörter
+            featuresArtist2.put("topWord1", dna2.featureVector()[9]);
+            featuresArtist2.put("topWord2", dna2.featureVector()[10]);
+            featuresArtist2.put("topWord3", dna2.featureVector()[11]);
+            featuresArtist2.put("topWord4", dna2.featureVector()[12]);
+            featuresArtist2.put("topWord5", dna2.featureVector()[13]);
+            // Genre One-Hot-Encoding (5 binäre Features: Rock, Pop, Schlager, Rap, Sonstige)
+            featuresArtist2.put("genreRock", dna2.featureVector()[14]);
+            featuresArtist2.put("genrePop", dna2.featureVector()[15]);
+            featuresArtist2.put("genreSchlager", dna2.featureVector()[16]);
+            featuresArtist2.put("genreRap", dna2.featureVector()[17]);
+            featuresArtist2.put("genreSonstige", dna2.featureVector()[18]);
+            
+            // Genre-Kategorie und Name für bessere Lesbarkeit
+            int genreCategory2 = 0;
+            if (dna2.featureVector()[14] == 1.0) genreCategory2 = 1;
+            else if (dna2.featureVector()[15] == 1.0) genreCategory2 = 2;
+            else if (dna2.featureVector()[16] == 1.0) genreCategory2 = 3;
+            else if (dna2.featureVector()[17] == 1.0) genreCategory2 = 4;
+            else if (dna2.featureVector()[18] == 1.0) genreCategory2 = 5;
+            featuresArtist2.put("genreCategory", genreCategory2);
             featuresArtist2.put("avgSentiment", dna2.averageSentiment());
             featuresArtist2.put("avgSentimentNormalized", SentimentAnalysisService.normalizeScore(dna2.averageSentiment()));
+            // Genre-Name für bessere Lesbarkeit
+            featuresArtist2.put("genreName", getGenreName(genreCategory2));
 
             result.put("featuresArtist1", featuresArtist1);
             result.put("featuresArtist2", featuresArtist2);
@@ -300,5 +364,18 @@ public class AnalysisController {
     @GetMapping("/themes")
     public ResponseEntity<List<Theme>> getAllThemes() {
         return ResponseEntity.ok(lyricsDNAService.getAllThemes());
+    }
+
+    /**
+     * Hilfsmethode: Konvertiert Genre-Kategorie in lesbaren Namen.
+     */
+    private String getGenreName(int genreCategory) {
+        return switch (genreCategory) {
+            case 1 -> "Rock";
+            case 2 -> "Pop";
+            case 3 -> "Schlager";
+            case 4 -> "Rap";
+            default -> "Sonstige";
+        };
     }
 }

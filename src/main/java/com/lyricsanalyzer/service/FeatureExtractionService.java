@@ -13,17 +13,27 @@ import java.util.stream.Collectors;
 public class FeatureExtractionService {
 
     private static final Set<String> STOP_WORDS = Set.of(
+        // English stop words
         "the", "and", "a", "an", "in", "on", "at", "to", "of", "for", "with", 
         "is", "are", "was", "were", "be", "been", "being", "have", "has", "had", 
         "do", "does", "did", "will", "would", "should", "could", "may", "might", 
         "must", "can", "i", "you", "he", "she", "it", "we", "they", "my", "your", 
-        "his", "her", "its", "our", "their"
+        "his", "her", "its", "our", "their",
+        // German stop words (excludes words already in English list: in, an)
+        "der", "die", "das", "und", "den", "von", "zu", "mit", "sich", 
+        "für", "ist", "des", "im", "dem", "nicht", "ein", "eine", "als",
+        "auch", "es", "werden", "aus", "er", "hat", "dass", "sie", "nach",
+        "wird", "bei", "einer", "um", "haben", "nur", "oder", "aber", "vor",
+        "bis", "mehr", "durch", "man", "sein", "wurde", "so", "wenn", "einen", "wieder",
+        "uns", "ihm", "dann", "unter", "waren", "ihnen", "ihrem", "ihres",
+        "dieser", "ihr", "ihre", "unsere", "unser"
     );
 
     public Map<String, Double> extractWordFrequencies(String text) {
         if (text == null || text.isBlank()) return Map.of();
         
-        String[] words = text.toLowerCase().replaceAll("[^a-zA-Z\\s]", " ").split("\\s+");
+        // Unterstützung für deutsche Umlaute und ß - behält a-z, A-Z, ä, ö, ü, Ä, Ö, Ü, ß bei
+        String[] words = text.toLowerCase().replaceAll("[^a-zA-ZäöüÄÖÜß\\s]", " ").split("\\s+");
         Map<String, Integer> wordCounts = new HashMap<>();
         int totalWords = 0;
         
@@ -46,7 +56,8 @@ public class FeatureExtractionService {
     public Map<String, Double> extractBigramFrequencies(String text) {
         if (text == null || text.isBlank()) return Map.of();
         
-        String[] words = text.toLowerCase().replaceAll("[^a-zA-Z\\s]", " ").split("\\s+");
+        // Unterstützung für deutsche Umlaute und ß - behält a-z, A-Z, ä, ö, ü, Ä, Ö, Ü, ß bei
+        String[] words = text.toLowerCase().replaceAll("[^a-zA-ZäöüÄÖÜß\\s]", " ").split("\\s+");
         Map<String, Integer> bigramCounts = new HashMap<>();
         int totalBigrams = 0;
         
@@ -72,7 +83,8 @@ public class FeatureExtractionService {
 
     public double calculateAvgWordLength(String text) {
         if (text == null || text.isBlank()) return 0.0;
-        String[] words = text.split("\\s+");
+        // Behält deutsche Umlaute und ß bei
+        String[] words = text.replaceAll("[^a-zA-ZäöüÄÖÜß\\s]", " ").split("\\s+");
         if (words.length == 0) return 0.0;
         return Arrays.stream(words).mapToInt(String::length).average().orElse(0.0);
     }
@@ -93,7 +105,8 @@ public class FeatureExtractionService {
 
     public double calculateUniqueWordRatio(String text) {
         if (text == null || text.isBlank()) return 0.0;
-        String[] words = text.toLowerCase().replaceAll("[^a-zA-Z\\s]", " ").split("\\s+");
+        // Unterstützung für deutsche Umlaute und ß
+        String[] words = text.toLowerCase().replaceAll("[^a-zA-ZäöüÄÖÜß\\s]", " ").split("\\s+");
         if (words.length == 0) return 0.0;
         Set<String> uniqueWords = new HashSet<>(Arrays.asList(words));
         return (double) uniqueWords.size() / words.length;
@@ -109,20 +122,23 @@ public class FeatureExtractionService {
     public double calculateExclamationDensity(String text) {
         if (text == null || text.isBlank()) return 0.0;
         long exclamationCount = text.chars().filter(ch -> ch == '!').count();
-        long wordCount = Arrays.stream(text.split("\\s+")).count();
+        // Unterstützung für deutsche Umlaute und ß bei der Wortzählung
+        long wordCount = Arrays.stream(text.replaceAll("[^a-zA-ZäöüÄÖÜß\\s]", " ").split("\\s+")).count();
         return wordCount > 0 ? (double) exclamationCount / wordCount * 100 : 0.0;
     }
 
     public double calculateQuestionMarkDensity(String text) {
         if (text == null || text.isBlank()) return 0.0;
         long questionCount = text.chars().filter(ch -> ch == '?').count();
-        long wordCount = Arrays.stream(text.split("\\s+")).count();
+        // Unterstützung für deutsche Umlaute und ß bei der Wortzählung
+        long wordCount = Arrays.stream(text.replaceAll("[^a-zA-ZäöüÄÖÜß\\s]", " ").split("\\s+")).count();
         return wordCount > 0 ? (double) questionCount / wordCount * 100 : 0.0;
     }
 
     public double calculateCapitalWordRatio(String text) {
         if (text == null || text.isBlank()) return 0.0;
-        String[] words = text.split("\\s+");
+        // Unterstützung für deutsche Umlaute und ß
+        String[] words = text.replaceAll("[^a-zA-ZäöüÄÖÜß\\s]", " ").split("\\s+");
         if (words.length == 0) return 0.0;
         long capitalWords = Arrays.stream(words)
                 .filter(word -> !word.isEmpty() && Character.isUpperCase(word.charAt(0)))

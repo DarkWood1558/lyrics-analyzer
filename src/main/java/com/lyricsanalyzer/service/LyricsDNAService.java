@@ -68,12 +68,28 @@ public class LyricsDNAService {
 
     /**
      * Berechnet den Feature-Vektor für eine Liste von Tracks.
+     * Enthält jetzt deutlich mehr Features für bessere Künstler-Unterscheidung.
+     * 
+     * Feature-Vektor Struktur:
+     * - Index 0-2: Basis-Text-Features (avgWordLength, rhymeDensity, uniqueWordRatio)
+     * - Index 3-7: Erweiterte Stil-Features (avgLineLength, exclamationDensity, questionMarkDensity, capitalWordRatio, lineCount)
+     * - Index 8: trackCount (Anzahl der Tracks des Künstlers)
+     * - Index 9-13: Top-5 Wörter (Häufigkeiten)
+     * - Index 14: avgSentiment
      */
     private double[] calculateFeatureVector(List<Track> tracks) {
         double totalAvgWordLength = 0;
         double totalRhymeDensity = 0;
         double totalUniqueWordRatio = 0;
+        double totalAvgLineLength = 0;
+        double totalExclamationDensity = 0;
+        double totalQuestionMarkDensity = 0;
+        double totalCapitalWordRatio = 0;
+        int totalLineCount = 0;
         int count = 0;
+
+        // Für die Top-Wörter des Künstlers
+        Map<String, Double> aggregatedWordFrequencies = new HashMap<>();
 
         for (Track track : tracks) {
             if (track.getLyrics() == null || track.getLyrics().isBlank()) {
@@ -84,19 +100,55 @@ public class LyricsDNAService {
             totalAvgWordLength += features.avgWordLength();
             totalRhymeDensity += features.rhymeDensity();
             totalUniqueWordRatio += features.uniqueWordRatio();
+            totalAvgLineLength += features.avgLineLength();
+            totalExclamationDensity += features.exclamationDensity();
+            totalQuestionMarkDensity += features.questionMarkDensity();
+            totalCapitalWordRatio += features.capitalWordRatio();
+            totalLineCount += features.lineCount();
+            
+            // Aggregiere Wortfrequenzen für die Top-Wörter
+            features.topWords().forEach((word, freq) -> 
+                aggregatedWordFrequencies.merge(word, freq, Double::sum));
+            
             count++;
         }
 
         if (count == 0) {
-            return new double[]{0, 0, 0, 0};
+            // Fallback: 15 Features (9 Basis + 5 Top-Wörter + avgSentiment)
+            return new double[15];
         }
 
-        return new double[]{
-                totalAvgWordLength / count,
-                totalRhymeDensity / count,
-                totalUniqueWordRatio / count,
-                calculateAvgSentiment(tracks)
-        };
+        // Berechne die Top-5 häufigsten Wörter dieses Künstlers
+        List<String> topWords = aggregatedWordFrequencies.entrySet().stream()
+                .sorted(Map.Entry.<String, Double>comparingByValue().reversed())
+                .limit(5)
+                .map(Map.Entry::getKey)
+                .toList();
+
+        // Erstelle Feature-Vektor: 9 Basis-Features + 5 Top-Wörter + avgSentiment = 15 Features
+        double[] featureVector = new double[15];
+        
+        // Basis-Features (Index 0-8)
+        featureVector[0] = totalAvgWordLength / count;           // avgWordLength
+        featureVector[1] = totalRhymeDensity / count;          // rhymeDensity
+        featureVector[2] = totalUniqueWordRatio / count;       // uniqueWordRatio
+        featureVector[3] = totalAvgLineLength / count;         // avgLineLength (NEU)
+        featureVector[4] = totalExclamationDensity / count;    // exclamationDensity (NEU)
+        featureVector[5] = totalQuestionMarkDensity / count;   // questionMarkDensity (NEU)
+        featureVector[6] = totalCapitalWordRatio / count;      // capitalWordRatio (NEU)
+        featureVector[7] = (double) totalLineCount / count;     // lineCount (NEU)
+        featureVector[8] = count;                             // trackCount (NEU - Anzahl der Tracks)
+        
+        // Top-5 Wörter als Features (Index 9-13) - Häufigkeit pro Track
+        for (int i = 0; i < 5; i++) {
+            String word = i < topWords.size() ? topWords.get(i) : "";
+            featureVector[9 + i] = aggregatedWordFrequencies.getOrDefault(word, 0.0) / count;
+        }
+        
+        // avgSentiment als letztes Feature (Index 14)
+        featureVector[14] = calculateAvgSentiment(tracks);
+
+        return featureVector;
     }
 
     /**
@@ -162,14 +214,17 @@ public class LyricsDNAService {
 
     /**
      * Bereitet Visualisierungsdaten für die DNA-Scatterplot vor.
+     * Nutzt jetzt die ersten beiden Features (avgWordLength, rhymeDensity) für die Position
+     * und weitere Features für Farbkodierung und Größe.
      */
     public List<Map<String, Object>> getDNAVisualizationData() {
         List<LyricsDNA> allDNA = generateAllDNAWithThemes();
 
         // Find min/max for normalization
-        double maxX = allDNA.stream().mapToDouble(d -> d.featureVector()[0]).max().orElse(1.0);
-        double maxY = allDNA.stream().mapToDouble(d -> d.featureVector()[1]).max().orElse(1.0);
+        double maxAvgWordLength = allDNA.stream().mapToDouble(d -> d.featureVector()[0]).max().orElse(1.0);
+        double maxRhymeDensity = allDNA.stream().mapToDouble(d -> d.featureVector()[1]).max().orElse(1.0);
         double maxSentiment = allDNA.stream().mapToDouble(LyricsDNA::averageSentiment).map(Math::abs).max().orElse(1.0);
+        double maxExclamationDensity = allDNA.stream().mapToDouble(d -> d.featureVector()[4]).max().orElse(1.0);
 
         return allDNA.stream()
                 .map(dna -> {
@@ -179,11 +234,13 @@ public class LyricsDNAService {
                     // Normalisierte Koordinaten für Visualisierung (0-50)
                     // x = avgWordLength normalisiert
                     // y = rhymeDensity normalisiert
-                    result.put("x", (dna.featureVector()[0] / Math.max(maxX, 0.1)) * 50);
-                    result.put("y", (dna.featureVector()[1] / Math.max(maxY, 0.1)) * 50);
+                    result.put("x", (dna.featureVector()[0] / Math.max(maxAvgWordLength, 0.1)) * 50);
+                    result.put("y", (dna.featureVector()[1] / Math.max(maxRhymeDensity, 0.1)) * 50);
 
-                    // Blasengröße basierend auf Sentiment (8-20px)
-                    result.put("size", (Math.abs(dna.averageSentiment()) / Math.max(maxSentiment, 0.1)) * 15 + 5);
+                    // Blasengröße basierend auf Sentiment und ExclamationDensity (mehr Dynamik)
+                    double size = ((Math.abs(dna.averageSentiment()) / Math.max(maxSentiment, 0.1)) * 10 
+                            + (dna.featureVector()[4] / Math.max(maxExclamationDensity, 0.1)) * 5) + 5;
+                    result.put("size", Math.min(size, 25)); // Max 25px
 
                     // Farbe basierend auf Sentiment
                     result.put("color", dna.averageSentiment() >= 0 ? "positive" : "negative");
@@ -200,6 +257,19 @@ public class LyricsDNAService {
 
                     result.put("averageSentiment", dna.averageSentiment());
                     result.put("averageSentimentNormalized", SentimentAnalysisService.normalizeScore(dna.averageSentiment()));
+                    
+                    // Detaillierte Features für Frontend
+                    result.put("features", Map.of(
+                            "avgWordLength", String.format("%.2f", dna.featureVector()[0]),
+                            "rhymeDensity", String.format("%.2f", dna.featureVector()[1]),
+                            "uniqueWordRatio", String.format("%.2f", dna.featureVector()[2]),
+                            "avgLineLength", String.format("%.2f", dna.featureVector()[3]),
+                            "exclamationDensity", String.format("%.2f", dna.featureVector()[4]),
+                            "questionMarkDensity", String.format("%.2f", dna.featureVector()[5]),
+                            "capitalWordRatio", String.format("%.2f", dna.featureVector()[6]),
+                            "lineCount", String.format("%.0f", dna.featureVector()[7]),
+                            "trackCount", (int) dna.featureVector()[8]
+                    ));
 
                     return result;
                 })

@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lyrics Analyzer</title>
     <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
 </head>
 <body>
 <div class="app">
@@ -23,6 +24,7 @@
         <button class="tab-button" data-tab="style">Künstler-Stil</button>
         <button class="tab-button" data-tab="dna">Lyrics DNA</button>
         <button class="tab-button" data-tab="deeplearning">Deep Learning</button>
+        <button class="tab-button" data-tab="plots">Analyse-Plots</button>
     </nav>
 
     <main>
@@ -310,7 +312,7 @@
         </section>
         <!-- DEEP LEARNING -->
         <section class="tab-panel" id="panel-deeplearning">
-            <h2>🧠 Deep Learning – Themenklassifikation</h2>
+            <h2>Deep Learning – Themenklassifikation</h2>
 
             <!-- Modell-Status -->
             <div class="card" id="dl-status-card">
@@ -398,6 +400,126 @@
                 <div id="dl-compare-result" class="result-box hidden"></div>
             </div>
         </section>
+        <!-- ====== ANALYSE-PLOTS TAB (in <nav class="tabs"> einfügen) ====== -->
+        <!-- Tab-Button nach dem "deeplearning"-Button einfügen: -->
+        <button class="tab-button" data-tab="plots">📊 Analyse-Plots</button>
+
+        <!-- ====== PANEL (vor dem schließenden </main>-Tag einfügen) ====== -->
+        <section class="tab-panel" id="panel-plots">
+            <h2>📊 Analyse-Plots</h2>
+            <p class="muted" style="margin-bottom:1.5rem;">
+                Interaktive Plotly.js-Visualisierungen der Style-Features, Sentiment-Werte und Themes.
+                Alle Plots basieren auf den aktuell in der Datenbank gespeicherten Tracks.
+                <strong>Voraussetzung:</strong> Tracks mit Lyrics + Sentiment-Analyse.
+            </p>
+
+            <div style="display:flex;gap:1rem;align-items:center;flex-wrap:wrap;margin-bottom:1.5rem;">
+                <button class="btn btn-primary" id="btn-render-plots">Alle Plots laden</button>
+                <span class="muted" style="font-size:0.85rem;">
+            Tipp: In jedem Plot kann gezoomt, gescrollt und gefiltert werden (Legende anklicken).
+        </span>
+            </div>
+
+            <!-- 1. SPLOM -->
+            <div class="card">
+                <h3>1. Scatter Matrix (SPLOM) – Style-Features nach Genre</h3>
+                <p class="muted" style="margin-bottom:0.75rem;">
+                    Jeder Punkt = ein Track. Farbe = Genre-Kategorie. Zeigt Korrelationen
+                    zwischen den 6 wichtigsten Style-Features auf einen Blick.
+                    Interessant: Trennen sich Rock- und Rap-Tracks im Feature-Raum?
+                </p>
+                <div id="plot-splom" style="min-height:300px;">
+                    <p class="muted" style="padding:1rem;">→ „Alle Plots laden" drücken</p>
+                </div>
+            </div>
+
+            <!-- 2. Parallel Coordinates -->
+            <div class="card">
+                <h3>2. Parallel Coordinates – Style-Profil je Künstler</h3>
+                <p class="muted" style="margin-bottom:0.75rem;">
+                    Jede Linie = ein Künstler (Durchschnitt seiner Tracks). Farbe = Genre.
+                    Achsen können per Drag verschoben werden. Wertebereiche auf jeder Achse
+                    einschränken, um Künstler-Cluster zu isolieren.
+                </p>
+                <div id="plot-parallel" style="min-height:300px;">
+                    <p class="muted" style="padding:1rem;">→ „Alle Plots laden" drücken</p>
+                </div>
+            </div>
+
+            <!-- 3. Violin Plot -->
+            <div class="card">
+                <h3>3. Violin-Plot – Feature-Verteilung nach Sentiment-Klasse</h3>
+                <p class="muted" style="margin-bottom:0.75rem;">
+                    Zeigt die Verteilung eines gewählten Features über die fünf Sentiment-Klassen.
+                    Unterscheiden sich sehr negative und sehr positive Songs in ihrer Reimdichte?
+                </p>
+                <div style="margin-bottom:1rem;">
+                    <label for="violin-feature-select" style="color:var(--text-secondary);margin-right:0.5rem;">Feature:</label>
+                    <select id="violin-feature-select" style="min-width:220px;">
+                        <option value="uniqueWordRatio">Unique-Wort-Anteil</option>
+                        <option value="rhymeDensity">Reimdichte</option>
+                        <option value="avgWordLength">Ø Wortlänge</option>
+                        <option value="avgLineLength">Ø Zeilenlänge</option>
+                        <option value="exclamationDensity">Ausrufezeichen-Dichte</option>
+                        <option value="questionMarkDensity">Fragezeichen-Dichte</option>
+                        <option value="capitalWordRatio">Großbuchstaben-Anteil</option>
+                    </select>
+                </div>
+                <div id="plot-violin" style="min-height:300px;">
+                    <p class="muted" style="padding:1rem;">→ „Alle Plots laden" drücken</p>
+                </div>
+            </div>
+
+            <!-- 4. Korrelations-Heatmap -->
+            <div class="card">
+                <h3>4. Korrelationsmatrix – Pearson r zwischen allen Features</h3>
+                <p class="muted" style="margin-bottom:0.75rem;">
+                    Zeigt, welche Style-Features stark korrelieren (blau = positiv, rot = negativ).
+                    Hohe Korrelation = redundante Features; hilft, das Modell zu verstehen.
+                </p>
+                <div id="plot-heatmap" style="min-height:300px;">
+                    <p class="muted" style="padding:1rem;">→ „Alle Plots laden" drücken</p>
+                </div>
+            </div>
+
+            <!-- 5. Bubble Chart (Themes) -->
+            <div class="card">
+                <h3>5. Bubble Chart – Theme-Cluster im Feature-Raum</h3>
+                <p class="muted" style="margin-bottom:0.75rem;">
+                    Jeder Punkt = ein gelabelter Track. X = Unique-Wort-Anteil, Y = Reimdichte,
+                    Blasengröße = Sentiment. Farbe = Theme-Label. Trennen sich die Themes voneinander?
+                    (Voraussetzung: Tracks mit Theme-Labels im Tracks-Tab)
+                </p>
+                <div id="plot-theme-bubble" style="min-height:300px;">
+                    <p class="muted" style="padding:1rem;">→ „Alle Plots laden" drücken</p>
+                </div>
+            </div>
+
+            <!-- 6. Sentiment-Trend -->
+            <div class="card">
+                <h3>6. Sentiment-Trend nach Erscheinungsjahr &amp; Genre</h3>
+                <p class="muted" style="margin-bottom:0.75rem;">
+                    Wie entwickelt sich das Sentiment über die Jahre – und unterscheiden sich
+                    Genres in ihrem zeitlichen Verlauf? (Voraussetzung: Metadaten nachladen im Dashboard)
+                </p>
+                <div id="plot-sentiment-trend" style="min-height:300px;">
+                    <p class="muted" style="padding:1rem;">→ „Alle Plots laden" drücken</p>
+                </div>
+            </div>
+
+            <!-- 7. Radar Chart -->
+            <div class="card">
+                <h3>7. Radar-Chart – Style-Profil nach Genre</h3>
+                <p class="muted" style="margin-bottom:0.75rem;">
+                    Normalisiertes Durchschnitts-Style-Profil pro Genre-Kategorie.
+                    Alle Features auf 0–1 skaliert für direkte Vergleichbarkeit.
+                    Welches Genre reimt am meisten? Wer hat die längsten Wörter?
+                </p>
+                <div id="plot-genre-radar" style="min-height:300px;">
+                    <p class="muted" style="padding:1rem;">→ „Alle Plots laden" drücken</p>
+                </div>
+            </div>
+        </section>
     </main>
 
     <!-- Track-Detail Modal -->
@@ -414,5 +536,6 @@
 
 <script src="js/api.js"></script>
 <script src="js/app.js"></script>
+<script src="js/plots.js"></script>
 </body>
 </html>

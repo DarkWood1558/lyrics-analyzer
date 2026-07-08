@@ -199,6 +199,10 @@
         else if (tabName === 'tracks') loadTracks();
         else if (tabName === 'stats') loadStats();
         else if (tabName === 'deeplearning') loadDlStatus();
+        else if (tabName === 'plots') {
+            // Plots werden nur auf Knopfdruck geladen (nicht automatisch beim Tab-Wechsel)
+            // LyricsPlots.init() wurde bereits in init() aufgerufen
+        }
     }
 
     // ==================== DASHBOARD ====================
@@ -1004,6 +1008,7 @@
 
         loadDashboard();
         loadTracks();
+        if (window.LyricsPlots) window.LyricsPlots.init();
     }
 
     // Start when DOM is ready

@@ -198,6 +198,7 @@
         if (tabName === 'dashboard') loadDashboard();
         else if (tabName === 'tracks') loadTracks();
         else if (tabName === 'stats') loadStats();
+        else if (tabName === 'deeplearning') loadDlStatus();
     }
 
     // ==================== DASHBOARD ====================
@@ -918,75 +919,6 @@
      */
     const dnaPointsById = new Map();
 
-    function renderDNAVisualization(data) {
-        if (!elements.dnaVisualization) return;
-        dnaPointsById.clear();
-
-        elements.dnaVisualization.innerHTML = `
-            <style>
-                .dna-scatterplot {
-                    position: relative;
-                    width: 100%;
-                    height: 400px;
-                    border: 1px solid var(--border-color);
-                    border-radius: var(--border-radius);
-                    background: var(--surface-hover);
-                    overflow: hidden;
-                }
-                .dna-point {
-                    position: absolute;
-                    border-radius: 50%;
-                    cursor: pointer;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    color: white;
-                    font-size: 10px;
-                    font-weight: bold;
-                    text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
-                    transition: transform 0.2s ease;
-                    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-                }
-                .dna-point:hover {
-                    transform: scale(1.5);
-                    z-index: 10;
-                }
-                .dna-tooltip {
-                    position: absolute;
-                    background: var(--surface-color);
-                    border: 1px solid var(--border-color);
-                    border-radius: var(--border-radius);
-                    padding: 0.5rem;
-                    font-size: 0.8rem;
-                    z-index: 100;
-                    pointer-events: none;
-                    display: none;
-                    max-width: 300px;
-                }
-            </style>
-            <div class="dna-scatterplot" id="dna-scatterplot">
-                ${data.map((point, idx) => {
-            dnaPointsById.set(String(idx), point);
-            return `
-                    <div class="dna-point"
-                         data-point-id="${idx}"
-                         style="left: ${point.x}%; top: ${100 - point.y}%;
-                               background: ${point.color === 'positive' ? 'var(--success-color)' : 'var(--error-color)'};
-                               width: ${point.size}px; height: ${point.size}px;"
-                         title="${escapeHtml(point.artist)} (${escapeHtml(point.topTheme)})">
-                    </div>
-                `;
-        }).join('')}
-                <div class="dna-tooltip" id="dna-tooltip"></div>
-            </div>
-        `;
-
-        elements.dnaVisualization.querySelectorAll('.dna-point').forEach(el => {
-            el.addEventListener('mouseenter', (e) => showDNATooltip(e, dnaPointsById.get(el.dataset.pointId)));
-            el.addEventListener('mouseleave', hideDNATooltip);
-        });
-    }
-
     function showDNATooltip(event, point) {
         const tooltip = document.getElementById('dna-tooltip');
         if (!tooltip || !point) return;
@@ -1003,8 +935,12 @@
             <div>Sentiment: ${point.averageSentiment !== undefined && point.averageSentiment !== null ? point.averageSentiment.toFixed(2) : 'N/A'}</div>
         `;
         tooltip.style.display = 'block';
-        tooltip.style.left = (event.pageX + 10) + 'px';
-        tooltip.style.top = (event.pageY + 10) + 'px';
+        
+        // Position direkt unter dem Mauszeiger (fixed position)
+        // transform: translate(-50%, -100%) zentriert den Tooltip horizontal und 
+        // positioniert ihn über dem Mauszeiger
+        tooltip.style.left = event.clientX + 'px';
+        tooltip.style.top = event.clientY + 'px';
     }
 
     function hideDNATooltip() {
@@ -1064,6 +1000,7 @@
         initThemes();
         initStyle();
         initDNA();
+        initDeepLearning();
 
         loadDashboard();
         loadTracks();
@@ -1074,5 +1011,658 @@
         document.addEventListener('DOMContentLoaded', init);
     } else {
         init();
+    }
+    function renderDNAVisualization(data) {
+        if (!elements.dnaVisualization) return;
+        dnaPointsById.clear();
+
+        elements.dnaVisualization.innerHTML = `
+            <style>
+                .dna-visualization-container {
+                    position: relative;
+                    width: 100%;
+                    height: 600px;
+                    border: 1px solid var(--border-color);
+                    border-radius: var(--border-radius);
+                    background: var(--surface-hover);
+                    overflow: hidden;
+                    cursor: grab;
+                }
+                
+                .dna-visualization-container:hover {
+                    cursor: grab;
+                }
+                
+                .dna-visualization-container:active {
+                    cursor: grabbing;
+                }
+                
+                .dna-zoom-container {
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    transform-origin: 0 0;
+                    transition: transform 0.1s ease-out;
+                }
+                
+                .dna-scatterplot {
+                    position: relative;
+                    width: 100%;
+                    height: 100%;
+                }
+                
+                .dna-point {
+                    position: absolute;
+                    border-radius: 50%;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    color: white;
+                    font-size: 10px;
+                    font-weight: bold;
+                    text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+                    transition: transform 0.2s ease, box-shadow 0.2s ease;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+                    user-select: none;
+                }
+                
+                .dna-point:hover {
+                    transform: scale(1.5);
+                    z-index: 10;
+                    box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+                }
+                
+                .dna-tooltip {
+                    position: fixed;
+                    background: var(--surface-color);
+                    border: 1px solid var(--border-color);
+                    border-radius: var(--border-radius);
+                    padding: 0.5rem 0.75rem;
+                    font-size: 0.8rem;
+                    z-index: 9999;
+                    pointer-events: none;
+                    display: none;
+                    max-width: 300px;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                    transform: translate(-50%, -100%);
+                    transform-origin: center bottom;
+                }
+                
+                .dna-tooltip::after {
+                    content: '';
+                    position: absolute;
+                    bottom: -8px;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    border-left: 6px solid transparent;
+                    border-right: 6px solid transparent;
+                    border-top: 6px solid var(--border-color);
+                }
+                
+                .zoom-controls {
+                    position: absolute;
+                    bottom: 10px;
+                    right: 10px;
+                    display: flex;
+                    gap: 5px;
+                    z-index: 100;
+                    background: rgba(255,255,255,0.8);
+                    padding: 5px;
+                    border-radius: var(--border-radius);
+                }
+                
+                .zoom-btn {
+                    background: var(--surface-color);
+                    border: 1px solid var(--border-color);
+                    width: 28px;
+                    height: 28px;
+                    border-radius: 50%;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 16px;
+                    font-weight: bold;
+                }
+                
+                .zoom-btn:hover {
+                    background: var(--surface-hover);
+                }
+                
+                .reset-btn {
+                    background: var(--surface-color);
+                    border: 1px solid var(--border-color);
+                    padding: 5px 10px;
+                    border-radius: var(--border-radius);
+                    cursor: pointer;
+                    font-size: 0.8rem;
+                    margin-left: 5px;
+                }
+                
+                .reset-btn:hover {
+                    background: var(--surface-hover);
+                }
+                
+                /* Genre Farben */
+                .genre-rock { background: #e74c3c; }
+                .genre-pop { background: #3498db; }
+                .genre-schlager { background: #f39c12; }
+                .genre-rap { background: #9b59b6; }
+                .genre-other { background: #95a5a6; }
+                
+                /* Legende - kompakt und seitlich */
+                .dna-visualization-with-legend {
+                    display: flex;
+                    gap: 1rem;
+                    flex-wrap: wrap;
+                }
+                
+                .dna-visualization-container {
+                    flex: 1;
+                    min-width: 500px;
+                }
+                
+                .dna-legend {
+                    background: var(--surface-color);
+                    border: 1px solid var(--border-color);
+                    border-radius: var(--border-radius);
+                    padding: 1rem;
+                    font-size: 0.85rem;
+                    width: 280px;
+                    flex-shrink: 0;
+                }
+                
+                .dna-legend h4 {
+                    margin: 0 0 0.75rem 0;
+                    color: var(--text-primary);
+                    font-size: 0.95rem;
+                }
+                
+                .legend-section {
+                    margin-bottom: 1rem;
+                }
+                
+                .legend-section h5 {
+                    margin: 0 0 0.5rem 0;
+                    color: var(--text-secondary);
+                    font-size: 0.8rem;
+                    font-weight: 600;
+                }
+                
+                .legend-item {
+                    display: flex;
+                    align-items: center;
+                    gap: 0.5rem;
+                    margin: 0.25rem 0;
+                }
+                
+                .legend-color-box {
+                    width: 18px;
+                    height: 18px;
+                    border-radius: 50%;
+                    border: 1px solid var(--border-color);
+                }
+                
+                .legend-axis {
+                    display: flex;
+                    gap: 0.5rem;
+                    margin: 0.3rem 0;
+                    font-size: 0.8rem;
+                }
+                
+                .axis-label {
+                    font-weight: 500;
+                    min-width: 80px;
+                }
+                
+                .axis-description {
+                    color: var(--text-secondary);
+                    font-size: 0.8rem;
+                }
+                
+                .interpretation-list {
+                    font-size: 0.75rem;
+                    color: var(--text-secondary);
+                }
+                
+                .interpretation-list div {
+                    margin: 0.2rem 0;
+                    line-height: 1.4;
+                }
+                
+                @media (max-width: 768px) {
+                    .dna-visualization-with-legend {
+                        flex-direction: column;
+                    }
+                    .dna-legend {
+                        width: 100%;
+                    }
+                }
+            </style>
+            <div class="dna-visualization-container" id="dna-scatterplot-container">
+                <div class="dna-zoom-container" id="dna-zoom-container">
+                    <div class="dna-scatterplot" id="dna-scatterplot">
+                        ${data.map((point, idx) => {
+                            dnaPointsById.set(String(idx), point);
+                            
+                            // Genre-basierte Farbe verwenden
+                            let colorClass = 'genre-other';
+                            if (point.genreName) {
+                                const genreLower = point.genreName.toLowerCase();
+                                if (genreLower.includes('rock')) colorClass = 'genre-rock';
+                                else if (genreLower.includes('pop')) colorClass = 'genre-pop';
+                                else if (genreLower.includes('schlager')) colorClass = 'genre-schlager';
+                                else if (genreLower.includes('rap') || genreLower.includes('hip')) colorClass = 'genre-rap';
+                            }
+                            
+                            return `
+                                <div class="dna-point ${colorClass}"
+                                     data-point-id="${idx}"
+                                     style="left: ${point.x}%; top: ${100 - point.y}%;
+                                           width: ${point.size}px; height: ${point.size}px;">
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+                <div class="zoom-controls">
+                    <button class="zoom-btn" id="zoom-out" title="Zoom aus">-</button>
+                    <button class="zoom-btn" id="zoom-in" title="Zoom in">+</button>
+                    <button class="reset-btn" id="reset-view" title="Zurücksetzen">Reset</button>
+                </div>
+                <div class="dna-tooltip" id="dna-tooltip"></div>
+            </div>
+        `;
+        
+        // Füge die Legende nach der Visualisierung hinzu
+        const legendHtml = `
+            <div class="dna-legend">
+                <h4>📊 DNA-Visualisierung - Legende</h4>
+                <div class="legend-section">
+                    <h5>📍 Achsen</h5>
+                    <div class="legend-axis">
+                        <span class="axis-label">X-Achse:</span>
+                        <span class="axis-description">Durchschnittliche Wortlänge</span>
+                    </div>
+                    <div class="legend-axis">
+                        <span class="axis-label">Y-Achse:</span>
+                        <span class="axis-description">Reimdichte</span>
+                    </div>
+                    <div class="legend-axis">
+                        <span class="axis-label">Blasengröße:</span>
+                        <span class="axis-description">Emotionalität</span>
+                    </div>
+                </div>
+                <div class="legend-section">
+                    <h5>🎨 Genres</h5>
+                    <div class="legend-item">
+                        <div class="legend-color-box genre-rock"></div>
+                        <span>Rock</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color-box genre-pop"></div>
+                        <span>Pop</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color-box genre-schlager"></div>
+                        <span>Schlager</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color-box genre-rap"></div>
+                        <span>Rap</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color-box genre-other"></div>
+                        <span>Sonstige</span>
+                    </div>
+                </div>
+                <div class="legend-section">
+                    <h5>💡 Position</h5>
+                    <div class="interpretation-list">
+                        <div><strong>Oben:</strong> Viele Reime</div>
+                        <div><strong>Unten:</strong> Wenig Reime</div>
+                        <div><strong>Rechts:</strong> Lange Wörter</div>
+                        <div><strong>Links:</strong> Kurze Wörter</div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Kombiniere Visualisierung und Legende in einem Container
+        elements.dnaVisualization.innerHTML += legendHtml;
+        
+        // Wrapper für Flex-Layout hinzufügen
+        const visualization = elements.dnaVisualization.querySelector('.dna-visualization-container');
+        const legend = elements.dnaVisualization.querySelector('.dna-legend');
+        if (visualization && legend) {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'dna-visualization-with-legend';
+            visualization.parentNode.insertBefore(wrapper, visualization);
+            wrapper.appendChild(visualization);
+            wrapper.appendChild(legend);
+        }
+
+        // Zoom/Pan State
+        let scale = 1;
+        let offsetX = 0;
+        let offsetY = 0;
+        let isDragging = false;
+        let dragStartX = 0;
+        let dragStartY = 0;
+        
+        const zoomContainer = elements.dnaVisualization.querySelector('.dna-zoom-container');
+        const container = elements.dnaVisualization.querySelector('.dna-visualization-container');
+        
+        // Zoom Controls
+        elements.dnaVisualization.querySelector('#zoom-in')?.addEventListener('click', () => {
+            scale = Math.min(scale * 1.3, 4); // Max 4x zoom
+            updateTransform();
+        });
+        
+        elements.dnaVisualization.querySelector('#zoom-out')?.addEventListener('click', () => {
+            scale = Math.max(scale / 1.3, 0.5); // Min 0.5x zoom
+            updateTransform();
+        });
+        
+        elements.dnaVisualization.querySelector('#reset-view')?.addEventListener('click', () => {
+            scale = 1;
+            offsetX = 0;
+            offsetY = 0;
+            updateTransform();
+        });
+        
+        function updateTransform() {
+            if (zoomContainer) {
+                zoomContainer.style.transform = `translate(${offsetX}px, ${offsetY}px) scale(${scale})`;
+            }
+        }
+        
+        // Mouse wheel zoom
+        container?.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const delta = e.deltaY > 0 ? 0.9 : 1.1; // Zoom direction
+            const newScale = Math.min(Math.max(scale * delta, 0.5), 4);
+            
+            // Zoom towards mouse position
+            const rect = container.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            
+            // Calculate new offset to zoom towards mouse
+            offsetX = mouseX - (mouseX - offsetX) * (newScale / scale);
+            offsetY = mouseY - (mouseY - offsetY) * (newScale / scale);
+            scale = newScale;
+            
+            updateTransform();
+        }, { passive: false });
+        
+        // Pan with mouse drag
+        container?.addEventListener('mousedown', (e) => {
+            if (e.button === 0) { // Left mouse button
+                isDragging = true;
+                dragStartX = e.clientX - offsetX;
+                dragStartY = e.clientY - offsetY;
+                container.style.cursor = 'grabbing';
+            }
+        });
+        
+        document.addEventListener('mousemove', (e) => {
+            if (isDragging) {
+                offsetX = e.clientX - dragStartX;
+                offsetY = e.clientY - dragStartY;
+                updateTransform();
+            }
+        });
+        
+        document.addEventListener('mouseup', () => {
+            isDragging = false;
+            container.style.cursor = 'grab';
+        });
+
+        // Tooltip functionality
+        elements.dnaVisualization.querySelectorAll('.dna-point').forEach(el => {
+            el.addEventListener('mouseenter', (e) => showDNATooltip(e, dnaPointsById.get(el.dataset.pointId)));
+            el.addEventListener('mouseleave', hideDNATooltip);
+        });
+    }
+// ==================== DEEP LEARNING ====================
+
+    function initDeepLearning() {
+        const btnRefreshStatus = document.getElementById('btn-dl-refresh-status');
+        const btnTrain        = document.getElementById('btn-dl-train');
+        const btnClassifyAll  = document.getElementById('btn-dl-classify-all');
+        const btnClassify     = document.getElementById('btn-dl-classify');
+        const btnCompare      = document.getElementById('btn-dl-compare');
+
+        if (btnRefreshStatus) btnRefreshStatus.addEventListener('click', loadDlStatus);
+        if (btnTrain)         btnTrain.addEventListener('click', handleDlTrain);
+        if (btnClassifyAll)   btnClassifyAll.addEventListener('click', handleDlClassifyAll);
+        if (btnClassify)      btnClassify.addEventListener('click', handleDlClassify);
+        if (btnCompare)       btnCompare.addEventListener('click', handleDlCompare);
+    }
+
+    async function loadDlStatus() {
+        try {
+            const s = await api.getDlStatus();
+            const indicator = document.getElementById('dl-trained-indicator');
+            const samples   = document.getElementById('dl-training-samples');
+            const vocab     = document.getElementById('dl-vocab-size');
+
+            if (indicator) {
+                if (s.training) {
+                    indicator.textContent = '⏳ Training läuft …';
+                    indicator.className = 'dl-status-value';
+                } else if (s.trained) {
+                    indicator.textContent = '✅ Trainiert';
+                    indicator.className = 'dl-status-value trained';
+                } else {
+                    indicator.textContent = 'Nicht trainiert';
+                    indicator.className = 'dl-status-value not-trained';
+                }
+            }
+            if (samples) samples.textContent = s.trainingSamples || '–';
+            if (vocab)   vocab.textContent   = s.vocabSize || '–';
+        } catch (e) {
+            showToast('Status-Abruf fehlgeschlagen: ' + e.message);
+        }
+    }
+
+    async function handleDlTrain() {
+        const loading = document.getElementById('dl-train-loading');
+        const result  = document.getElementById('dl-train-result');
+        showLoading(loading, true);
+        result.classList.add('hidden');
+
+        try {
+            const r = await api.trainDlModel();
+            if (r.error) {
+                showResult(result, 'Fehler: ' + (r.error || r.message), true);
+                return;
+            }
+            showResult(result,
+                `Training abgeschlossen! ` +
+                `Tracks: ${r.trainingSamples} | ` +
+                `Vokabular: ${r.vocabSize} Wörter | ` +
+                `Epochen: ${r.epochs} | ` +
+                `Train-Accuracy: ${r.trainAccuracy}`,
+                false);
+            showToast('DL-Modell trainiert!');
+            loadDlStatus();
+        } catch (e) {
+            showResult(result, 'Training fehlgeschlagen: ' + e.message, true);
+        } finally {
+            showLoading(loading, false);
+        }
+    }
+
+    async function handleDlClassifyAll() {
+        const loading = document.getElementById('dl-train-loading');
+        const result  = document.getElementById('dl-train-result');
+        showLoading(loading, true);
+        result.classList.add('hidden');
+
+        try {
+            const r = await api.classifyAllThemesDl();
+            if (r.error) {
+                showResult(result, 'Fehler: ' + r.error, true);
+                return;
+            }
+            showResult(result,
+                `Klassifikation abgeschlossen! ` +
+                `Klassifiziert: ${r.classifiedTracks} | ` +
+                `Fehler: ${r.errors}`,
+                false);
+            showToast('Alle Tracks klassifiziert (DL)!');
+            loadTracks();
+        } catch (e) {
+            showResult(result, 'Fehler: ' + e.message, true);
+        } finally {
+            showLoading(loading, false);
+        }
+    }
+
+    async function handleDlClassify() {
+        const artist  = document.getElementById('dl-classify-artist')?.value?.trim();
+        const title   = document.getElementById('dl-classify-title')?.value?.trim();
+        const loading = document.getElementById('dl-classify-loading');
+        const result  = document.getElementById('dl-classify-result');
+
+        if (!artist || !title) {
+            showResult(result, 'Bitte Künstler und Titel eingeben', true);
+            return;
+        }
+
+        showLoading(loading, true);
+        result.classList.add('hidden');
+
+        try {
+            const r = await api.classifyThemeDl(artist, title);
+            if (r.error) {
+                showResult(result, 'Fehler: ' + r.error, true);
+                return;
+            }
+
+            const confidenceClass = r.confidenceRaw >= 0.6
+                ? 'dl-confidence-high'
+                : r.confidenceRaw >= 0.35
+                    ? 'dl-confidence-mid'
+                    : 'dl-confidence-low';
+
+            const distBars = Object.entries(r.themeDistribution || {})
+                .sort((a, b) => b[1] - a[1])
+                .map(([theme, pct]) => `
+                <div class="dl-theme-bar">
+                    <span class="dl-theme-bar-label">${escapeHtml(theme)}</span>
+                    <div style="flex:1; background: var(--surface-color); border-radius:4px; overflow:hidden;">
+                        <div class="dl-theme-bar-fill" style="width:${pct}%"></div>
+                    </div>
+                    <span class="dl-theme-bar-pct">${pct}%</span>
+                </div>`).join('');
+
+            result.innerHTML = `
+            <div style="margin-bottom:0.75rem;">
+                <strong>Vorhergesagtes Theme:</strong>
+                ${escapeHtml(r.predictedTheme || '–')}
+                <span class="dl-confidence-badge ${confidenceClass}" style="margin-left:0.5rem;">
+                    Konfidenz ${r.confidence}
+                </span>
+                ${r.existingThemeLabel
+                ? `<span style="margin-left:0.5rem; color:var(--text-muted);">
+                        (manuelles Label: ${escapeHtml(r.existingThemeLabel)})
+                       </span>`
+                : ''}
+            </div>
+            <div><strong>Themenverteilung:</strong></div>
+            <div style="margin-top:0.5rem;">${distBars}</div>
+        `;
+            result.classList.remove('hidden', 'result-box-error');
+            result.classList.add('result-box-success');
+        } catch (e) {
+            showResult(result, 'Fehler: ' + e.message, true);
+        } finally {
+            showLoading(loading, false);
+        }
+    }
+
+    async function handleDlCompare() {
+        const artist  = document.getElementById('dl-compare-artist')?.value?.trim();
+        const title   = document.getElementById('dl-compare-title')?.value?.trim();
+        const loading = document.getElementById('dl-compare-loading');
+        const result  = document.getElementById('dl-compare-result');
+
+        if (!artist || !title) {
+            showResult(result, 'Bitte Künstler und Titel eingeben', true);
+            return;
+        }
+
+        showLoading(loading, true);
+        result.classList.add('hidden');
+
+        try {
+            const r = await api.compareModels(artist, title);
+            if (r.error) {
+                showResult(result, 'Fehler: ' + r.error, true);
+                return;
+            }
+
+            const agree = r.dlPredicted && r.wekaPredicted && r.dlPredicted === r.wekaPredicted;
+            const agreeBadge = r.dlPredicted && r.wekaPredicted
+                ? `<span class="dl-confidence-badge ${agree ? 'dl-confidence-high' : 'dl-confidence-low'}">
+                ${agree ? '✅ Übereinstimmung' : '⚠️ Unterschiedlich'}
+               </span>`
+                : '';
+
+            const renderDist = (dist) => Object.entries(dist || {})
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 5)
+                .map(([theme, pct]) => `
+                <div class="dl-theme-bar">
+                    <span class="dl-theme-bar-label">${escapeHtml(theme)}</span>
+                    <div style="flex:1; background:var(--surface-color); border-radius:4px; overflow:hidden;">
+                        <div class="dl-theme-bar-fill" style="width:${pct}%"></div>
+                    </div>
+                    <span class="dl-theme-bar-pct">${pct}%</span>
+                </div>`).join('');
+
+            result.innerHTML = `
+            <div style="margin-bottom:1rem;">
+                <strong>${escapeHtml(r.artist)} – ${escapeHtml(r.title)}</strong>
+                ${r.manualLabel
+                ? `<span style="margin-left:0.5rem; color:var(--text-muted);">(manuell: ${escapeHtml(r.manualLabel)})</span>`
+                : ''}
+                <div style="margin-top:0.5rem;">${agreeBadge}</div>
+            </div>
+            <div class="dl-compare-grid">
+                <div class="dl-model-box">
+                    <h4>🧠 Deep Learning (DL4J)</h4>
+                    ${r.dlError
+                ? `<span style="color:var(--error-color);">${escapeHtml(r.dlError)}</span>`
+                : r.dlStatus
+                    ? `<span class="muted">${escapeHtml(r.dlStatus)}</span>`
+                    : `<div><strong>Vorhersage:</strong> ${escapeHtml(r.dlPredicted || '–')}</div>
+                               <div style="margin-top:0.25rem;"><strong>Konfidenz:</strong> ${escapeHtml(r.dlConfidence || '–')}</div>
+                               <div style="margin-top:0.75rem;">${renderDist(r.dlDistribution)}</div>`}
+                </div>
+                <div class="dl-model-box">
+                    <h4>🌲 Random Forest (Weka)</h4>
+                    ${r.wekaError
+                ? `<span style="color:var(--error-color);">${escapeHtml(r.wekaError)}</span>`
+                : r.wekaStatus
+                    ? `<span class="muted">${escapeHtml(r.wekaStatus)}</span>`
+                    : `<div><strong>Vorhersage:</strong> ${escapeHtml(r.wekaPredicted || '–')}</div>
+                               <div style="margin-top:0.75rem;">${renderDist(r.wekaDistribution)}</div>`}
+                </div>
+            </div>
+        `;
+            result.classList.remove('hidden', 'result-box-error');
+            result.classList.add('result-box-success');
+        } catch (e) {
+            showResult(result, 'Fehler: ' + e.message, true);
+        } finally {
+            showLoading(loading, false);
+        }
     }
 })();

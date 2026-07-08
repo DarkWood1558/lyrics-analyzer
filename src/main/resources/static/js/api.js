@@ -161,7 +161,22 @@
         }
         return results;
     }
-
+// Deep Learning
+    async function getDlStatus() {
+        return apiRequest(`${API_BASE}/analysis/dl/status`);
+    }
+    async function trainDlModel() {
+        return apiRequest(`${API_BASE}/analysis/dl/train`, { method: 'POST' });
+    }
+    async function classifyThemeDl(artist, title) {
+        return apiRequest(`${API_BASE}/analysis/dl/classify?artist=${encodeURIComponent(artist)}&title=${encodeURIComponent(title)}`);
+    }
+    async function classifyAllThemesDl() {
+        return apiRequest(`${API_BASE}/analysis/dl/classify-all`, { method: 'POST' });
+    }
+    async function compareModels(artist, title) {
+        return apiRequest(`${API_BASE}/analysis/dl/compare?artist=${encodeURIComponent(artist)}&title=${encodeURIComponent(title)}`);
+    }
     window.LyricsAnalyzerAPI = {
         searchAndIngestTracks,
         analyzePendingSentiment,
@@ -190,5 +205,10 @@
         saveTrackTheme,
         deleteTrack,
         deleteTracks,
+        getDlStatus,
+        trainDlModel,
+        classifyThemeDl,
+        classifyAllThemesDl,
+        compareModels,
     };
 })();

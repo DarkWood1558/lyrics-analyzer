@@ -22,6 +22,7 @@
         <button class="tab-button" data-tab="themes">Themenklassifikation</button>
         <button class="tab-button" data-tab="style">Künstler-Stil</button>
         <button class="tab-button" data-tab="dna">Lyrics DNA</button>
+        <button class="tab-button" data-tab="deeplearning">Deep Learning</button>
     </nav>
 
     <main>
@@ -290,7 +291,7 @@
                     <div class="spinner"></div>
                     <span>Lade DNA …</span>
                 </div>
-                <div id="dna-visualization" style="height: 500px; margin-top: 1rem;"></div>
+                <div id="dna-visualization" style="height: 600px; margin-top: 1rem;"></div>
                 <div id="dna-result" class="result-box hidden"></div>
             </div>
 
@@ -307,7 +308,96 @@
                 <div id="dna-details-result" class="result-box hidden"></div>
             </div>
         </section>
+        <!-- DEEP LEARNING -->
+        <section class="tab-panel" id="panel-deeplearning">
+            <h2>🧠 Deep Learning – Themenklassifikation</h2>
 
+            <!-- Modell-Status -->
+            <div class="card" id="dl-status-card">
+                <h3>Modell-Status</h3>
+                <div id="dl-status-display" class="dl-status-grid">
+                    <div class="dl-status-item">
+                        <span class="dl-status-label">Status</span>
+                        <span class="dl-status-value" id="dl-trained-indicator">Nicht trainiert</span>
+                    </div>
+                    <div class="dl-status-item">
+                        <span class="dl-status-label">Trainingsdaten</span>
+                        <span class="dl-status-value" id="dl-training-samples">–</span>
+                    </div>
+                    <div class="dl-status-item">
+                        <span class="dl-status-label">Vokabular-Größe</span>
+                        <span class="dl-status-value" id="dl-vocab-size">–</span>
+                    </div>
+                </div>
+                <button class="btn btn-secondary btn-small" id="btn-dl-refresh-status"
+                        style="margin-top: 0.75rem;">Status aktualisieren</button>
+            </div>
+
+            <!-- Training -->
+            <div class="card">
+                <h3>Modell trainieren</h3>
+                <p class="muted" style="margin-bottom: 1rem;">
+                    Trainiert ein mehrschichtiges neuronales Netz (MLP, 3 Dense-Schichten + Dropout)
+                    auf TF-IDF-Vektoren der Songtexte. Alle Tracks mit Theme-Label werden als
+                    Trainingsdaten genutzt.<br>
+                    <strong>Hinweis:</strong> Training dauert je nach Datenmenge und Hardware
+                    10–60 Sekunden und blockiert kurz den Browser-Tab.
+                </p>
+
+                <div class="dl-architecture-info">
+                    <strong>Netz-Architektur:</strong>
+                    Input(Vokabular) → Dense(512, ReLU) → Dropout(0.4) → Dense(256, ReLU) →
+                    Dropout(0.3) → Dense(128, ReLU) → Dropout(0.2) → Softmax(14 Klassen)
+                </div>
+
+                <div class="form-row" style="margin-top: 1rem;">
+                    <button class="btn btn-primary" id="btn-dl-train">Training starten</button>
+                    <button class="btn btn-secondary" id="btn-dl-classify-all">
+                        Alle unlabelten Tracks klassifizieren
+                    </button>
+                </div>
+
+                <div id="dl-train-loading" class="loading hidden">
+                    <div class="spinner"></div>
+                    <span>Trainiere … (bitte warten, DL4J lädt native Bibliotheken beim ersten Mal)</span>
+                </div>
+                <div id="dl-train-result" class="result-box hidden"></div>
+            </div>
+
+            <!-- Einzelklassifikation -->
+            <div class="card">
+                <h3>Einzelnen Track klassifizieren</h3>
+                <div class="form-row">
+                    <input type="text" id="dl-classify-artist" placeholder="Künstler">
+                    <input type="text" id="dl-classify-title" placeholder="Titel">
+                    <button class="btn btn-primary" id="btn-dl-classify">Klassifizieren (DL)</button>
+                </div>
+                <div id="dl-classify-loading" class="loading hidden">
+                    <div class="spinner"></div>
+                    <span>Klassifiziere …</span>
+                </div>
+                <div id="dl-classify-result" class="result-box hidden"></div>
+            </div>
+
+            <!-- Modellvergleich -->
+            <div class="card">
+                <h3>Modellvergleich: DL vs. Weka</h3>
+                <p class="muted" style="margin-bottom: 1rem;">
+                    Vergleicht die Vorhersagen beider Modelle für denselben Track.
+                    Zeigt, wo sie übereinstimmen und wo sie abweichen.
+                </p>
+                <div class="form-row">
+                    <input type="text" id="dl-compare-artist" placeholder="Künstler">
+                    <input type="text" id="dl-compare-title" placeholder="Titel">
+                    <button class="btn btn-secondary" id="btn-dl-compare">Modelle vergleichen</button>
+                </div>
+                <div id="dl-compare-loading" class="loading hidden">
+                    <div class="spinner"></div>
+                    <span>Vergleiche …</span>
+                </div>
+                <div id="dl-compare-result" class="result-box hidden"></div>
+            </div>
+        </section>
     </main>
 
     <!-- Track-Detail Modal -->

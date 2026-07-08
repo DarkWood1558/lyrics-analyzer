@@ -13,11 +13,13 @@ import java.util.stream.Collectors;
 public class FeatureExtractionService {
 
     private static final Set<String> STOP_WORDS = Set.of(
+        // English stop words
         "the", "and", "a", "an", "in", "on", "at", "to", "of", "for", "with", 
         "is", "are", "was", "were", "be", "been", "being", "have", "has", "had", 
         "do", "does", "did", "will", "would", "should", "could", "may", "might", 
         "must", "can", "i", "you", "he", "she", "it", "we", "they", "my", "your", 
         "his", "her", "its", "our", "their",
+        // German stop words (excludes words already in English list: in, an)
         "der", "die", "das", "und", "den", "von", "zu", "mit", "sich", 
         "für", "ist", "des", "im", "dem", "nicht", "ein", "eine", "als",
         "auch", "es", "werden", "aus", "er", "hat", "dass", "sie", "nach",

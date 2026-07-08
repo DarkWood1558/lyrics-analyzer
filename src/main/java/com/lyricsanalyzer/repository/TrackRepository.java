@@ -102,4 +102,8 @@ public interface TrackRepository extends JpaRepository<Track, Long> {
         Double getAvg_score();
         Long getTrack_count();
     }
+
+    // Methoden für Deep Learning / Themenklassifikation
+    List<Track> findAllByThemeNotNull();
+    List<Track> findAllByThemeIsNull();
 }

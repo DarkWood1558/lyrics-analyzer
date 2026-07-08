@@ -43,6 +43,8 @@ lyrics-analyzer:
     # nach einem Neustart der Anwendung nicht erneut trainiert werden muss
     # (siehe ThemeClassificationService).
     path: ./data/theme-classifier.model
+  dl-model:
+    path: ./data/dl-theme-classifier.zip
 
 logging:
   level:

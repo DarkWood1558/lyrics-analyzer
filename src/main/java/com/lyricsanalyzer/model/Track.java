@@ -30,6 +30,13 @@ public class Track {
     @Column(name = "theme", columnDefinition = "VARCHAR(20)")
     private Theme theme;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "dl_theme", columnDefinition = "VARCHAR(20)")
+    private Theme dlTheme;
+
+    @Column(name = "dl_confidence")
+    private Double dlConfidence;
+
     @Column(name = "genre", columnDefinition = "VARCHAR(255)")
     private String genre;
 
@@ -128,6 +135,22 @@ public class Track {
 
     public void setTheme(Theme theme) {
         this.theme = theme;
+    }
+
+    public Theme getDlTheme() {
+        return dlTheme;
+    }
+
+    public void setDlTheme(Theme dlTheme) {
+        this.dlTheme = dlTheme;
+    }
+
+    public Double getDlConfidence() {
+        return dlConfidence;
+    }
+
+    public void setDlConfidence(Double dlConfidence) {
+        this.dlConfidence = dlConfidence;
     }
 
     public String getGenre() {

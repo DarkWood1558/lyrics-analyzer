@@ -156,8 +156,8 @@ public class DeepLearningController {
     }
 
     /**
-     * Klassifiziert alle Tracks ohne Theme-Label mit dem DL-Modell
-     * und speichert das Ergebnis in der Datenbank.
+     * Klassifiziert alle Tracks mit Lyrics mit dem DL-Modell
+     * und speichert das Ergebnis in den DL-spezifischen Feldern.
      */
     @PostMapping("/classify-all")
     public ResponseEntity<Map<String, Object>> classifyAll() {
@@ -167,18 +167,20 @@ public class DeepLearningController {
             return ResponseEntity.badRequest().body(body);
         }
 
-        List<Track> unlabeled = trackRepository.findAll().stream()
-                .filter(t -> t.getTheme() == null)
+        List<Track> toClassify = trackRepository.findAll().stream()
                 .filter(t -> t.getLyrics() != null && !t.getLyrics().isBlank())
                 .toList();
 
         int classified = 0;
         int errors = 0;
 
-        for (Track track : unlabeled) {
+        for (Track track : toClassify) {
             try {
                 Theme theme = dlService.classify(track.getLyrics());
-                track.setTheme(theme);
+                double confidence = dlService.getConfidence(track.getLyrics());
+                
+                track.setDlTheme(theme);
+                track.setDlConfidence(confidence);
                 trackRepository.save(track);
                 classified++;
             } catch (Exception e) {
@@ -190,7 +192,7 @@ public class DeepLearningController {
         result.put("message", "DL-Klassifikation abgeschlossen");
         result.put("classifiedTracks", classified);
         result.put("errors", errors);
-        result.put("skippedTracks", trackRepository.findAll().size() - classified - errors - unlabeled.size());
+        result.put("totalTracks", toClassify.size());
         return ResponseEntity.ok(result);
     }
 

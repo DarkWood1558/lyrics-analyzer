@@ -62,7 +62,7 @@ public class DeepLearningThemeService {
     /** Minimale Dokumenthäufigkeit: Wort muss in mindestens N Tracks vorkommen. */
     private static final int MIN_DOC_FREQ = 2;
 
-    private static final int EPOCHS = 100;
+    private static final int EPOCHS = 1000;
     private static final int BATCH_SIZE = 16;
 
     /** Theme-Reihenfolge */
@@ -155,18 +155,26 @@ public class DeepLearningThemeService {
             List<DataSet> batches = fullDataSet.asList();
             Collections.shuffle(batches, new Random(42));
 
+            List<Double> lossHistory = new ArrayList<>();
+
             for (int epoch = 0; epoch < EPOCHS; epoch++) {
+                double epochLoss = 0;
+                int batchCount = 0;
                 // Mini-Batch-Training: DataSet in Batches aufteilen
                 for (int batchStart = 0; batchStart < batches.size(); batchStart += BATCH_SIZE) {
                     int batchEnd = Math.min(batchStart + BATCH_SIZE, batches.size());
                     List<DataSet> batchList = batches.subList(batchStart, batchEnd);
                     DataSet batch = DataSet.merge(batchList);
                     network.fit(batch);
+                    epochLoss += network.score();
+                    batchCount++;
                 }
+                
+                double avgLoss = epochLoss / batchCount;
+                lossHistory.add(avgLoss);
 
                 if ((epoch + 1) % 5 == 0) {
-                    double score = network.score();
-                    log.info("Epoche {}/{} - Loss: {}", epoch + 1, EPOCHS, String.format("%.4f", score));
+                    log.info("Epoche {}/{} - Avg Loss: {}", epoch + 1, EPOCHS, String.format("%.4f", avgLoss));
                 }
             }
 
@@ -190,12 +198,20 @@ public class DeepLearningThemeService {
             System.out.println("===== Confusion Matrix =====");
             System.out.println(eval.getConfusionMatrix());
 
+            double[][] cmData = new double[NUM_CLASSES][NUM_CLASSES];
+            for (int i = 0; i < NUM_CLASSES; i++) {
+                for (int j = 0; j < NUM_CLASSES; j++) {
+                    cmData[i][j] = eval.getConfusionMatrix().getCount(i, j);
+                }
+            }
+            List<String> themeNames = THEME_ORDER.stream().map(Enum::name).toList();
+
             // --- 7. Atomar ersetzen + persistieren ---
             TrainedDLModel newModel = new TrainedDLModel(network, vocabulary, idfWeights, validTracks.size());
             this.currentModel = newModel;
             persistModel(newModel);
 
-            return new TrainingSummary(validTracks.size(), vocabSize, EPOCHS, accuracy);
+            return new TrainingSummary(validTracks.size(), vocabSize, EPOCHS, accuracy, lossHistory, cmData, themeNames);
 
         } finally {
             isTraining.set(false);
@@ -535,6 +551,9 @@ public class DeepLearningThemeService {
             int trainingSamples,
             int vocabSize,
             int epochs,
-            double trainAccuracy
+            double trainAccuracy,
+            List<Double> lossHistory,
+            double[][] confusionMatrix,
+            List<String> themeLabels
     ) {}
 }

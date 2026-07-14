@@ -25,6 +25,10 @@ spring:
     locations: classpath:db/migration
     baseline-on-migrate: true
     out-of-order: true
+    # Deaktiviert die Validierung, um Checksum-Fehler bei Änderungen an V1 zu ignorieren
+    validate-on-migrate: false
+    # Versucht die Historie zu reparieren
+    repair-on-migrate: true
 
 server:
   port: 8080

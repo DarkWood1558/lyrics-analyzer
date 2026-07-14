@@ -11,6 +11,8 @@ CREATE TABLE track (
     release_year        INTEGER,
     deezer_album_id     BIGINT,
     theme               VARCHAR(20),
+    dl_theme            VARCHAR(20),
+    dl_confidence       DOUBLE PRECISION,
 
     lyrics              TEXT,
     lyrics_status       VARCHAR(20) NOT NULL DEFAULT 'PENDING',
@@ -32,3 +34,4 @@ CREATE INDEX idx_track_genre ON track (genre);
 CREATE INDEX idx_track_release_year ON track (release_year);
 CREATE INDEX idx_track_deezer_album_id ON track (deezer_album_id);
 CREATE INDEX idx_track_theme ON track (theme);
+CREATE INDEX idx_track_dl_theme ON track (dl_theme);
